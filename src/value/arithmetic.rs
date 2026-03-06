@@ -306,5 +306,5 @@ mod test {
 
     // Remainder
     test_rem!(rem1, SignedInt => 10, SignedInt => 2, SignedInt);
-    test_rem!(rem2, SignedInt => 10, SignedInt => 2, SignedInt);
+    test_rem!(rem_overflow_int_int, SignedInt => i64::MIN, SignedInt => -1, SignedBigInt);
 }
