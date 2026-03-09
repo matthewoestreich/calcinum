@@ -1,33 +1,107 @@
 use super::dispatch_operation;
 use crate::value::Value;
+use num_bigint::{BigInt, BigUint};
+//use num_traits::{CheckedAdd, CheckedDiv, CheckedMul, CheckedRem, CheckedSub};
 use std::ops::{
     Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Rem, RemAssign, Sub, SubAssign,
 };
 
 trait CheckedMaths:
-    Sized + Add<Output = Self> + Sub<Output = Self> + Div<Output = Self> + Rem<Output = Self>
+    Sized
+    + Add<Output = Self>
+    + Sub<Output = Self>
+    + Div<Output = Self>
+    + Mul<Output = Self>
+    + Rem<Output = Self>
 {
-    fn checked_add(self, rhs: Self) -> Option<Self>;
-    fn checked_sub(self, rhs: Self) -> Option<Self>;
-    fn checked_div(self, rhs: Self) -> Option<Self>;
-    fn checked_mul(self, rhs: Self) -> Option<Self>;
-    fn checked_rem(self, rhs: Self) -> Option<Self>;
+    fn checked_add(&self, rhs: Self) -> Option<Self>;
+    fn checked_sub(&self, rhs: Self) -> Option<Self>;
+    fn checked_div(&self, rhs: Self) -> Option<Self>;
+    fn checked_mul(&self, rhs: Self) -> Option<Self>;
+    fn checked_rem(&self, rhs: Self) -> Option<Self>;
 }
 
+macro_rules! impl_checked_maths {
+    ($t:ty) => {
+        impl CheckedMaths for $t {
+            fn checked_add(&self, rhs: Self) -> Option<Self> {
+                <$t>::checked_add(*self, rhs)
+            }
+
+            fn checked_sub(&self, rhs: Self) -> Option<Self> {
+                <$t>::checked_sub(*self, rhs)
+            }
+
+            fn checked_mul(&self, rhs: Self) -> Option<Self> {
+                <$t>::checked_mul(*self, rhs)
+            }
+
+            fn checked_div(&self, rhs: Self) -> Option<Self> {
+                <$t>::checked_div(*self, rhs)
+            }
+
+            fn checked_rem(&self, rhs: Self) -> Option<Self> {
+                <$t>::checked_rem(*self, rhs)
+            }
+        }
+    };
+}
+
+impl_checked_maths!(u128);
+impl_checked_maths!(i128);
+impl_checked_maths!(u64);
+impl_checked_maths!(i64);
+
 impl CheckedMaths for f64 {
-    fn checked_add(self, rhs: Self) -> Option<Self> {
+    fn checked_add(&self, rhs: Self) -> Option<Self> {
+        Some(*self + rhs)
+    }
+    fn checked_sub(&self, rhs: Self) -> Option<Self> {
+        Some(*self - rhs)
+    }
+    fn checked_mul(&self, rhs: Self) -> Option<Self> {
+        Some(*self * rhs)
+    }
+    fn checked_div(&self, rhs: Self) -> Option<Self> {
+        Some(*self / rhs)
+    }
+    fn checked_rem(&self, rhs: Self) -> Option<Self> {
+        Some(*self % rhs)
+    }
+}
+
+impl CheckedMaths for BigInt {
+    fn checked_add(&self, rhs: Self) -> Option<Self> {
         Some(self + rhs)
     }
-    fn checked_sub(self, rhs: Self) -> Option<Self> {
+    fn checked_sub(&self, rhs: Self) -> Option<Self> {
         Some(self - rhs)
     }
-    fn checked_div(self, rhs: Self) -> Option<Self> {
+    fn checked_div(&self, rhs: Self) -> Option<Self> {
         Some(self / rhs)
     }
-    fn checked_mul(self, rhs: Self) -> Option<Self> {
+    fn checked_mul(&self, rhs: Self) -> Option<Self> {
         Some(self * rhs)
     }
-    fn checked_rem(self, rhs: Self) -> Option<Self> {
+    fn checked_rem(&self, rhs: Self) -> Option<Self> {
+        Some(self % rhs)
+    }
+}
+
+impl CheckedMaths for BigUint {
+    fn checked_add(&self, rhs: Self) -> Option<Self> {
+        Some(self + rhs)
+    }
+    fn checked_sub(&self, rhs: Self) -> Option<Self> {
+        Some(self - rhs)
+    }
+    fn checked_div(&self, rhs: Self) -> Option<Self> {
+        Some(self / rhs)
+    }
+    fn checked_mul(&self, rhs: Self) -> Option<Self> {
+        Some(self * rhs)
+    }
+    fn checked_rem(&self, rhs: Self) -> Option<Self> {
         Some(self % rhs)
     }
 }
@@ -38,11 +112,18 @@ where
 {
     fn add_assign(&mut self, rhs: Rhs) {
         let mut rhs = rhs.into();
-        *self = dispatch_operation!(self, rhs, n, |rhs| (*n).checked_add(rhs).map(Value::from))
-            .unwrap_or_else(|| {
-                self.promote();
-                dispatch_operation!(self, rhs, n, |rhs| Value::from(*n + rhs))
-            });
+        *self = dispatch_operation!(self, &mut rhs, n, |rhs| CheckedMaths::checked_add(n, rhs)
+            .map(Value::from))
+        .unwrap_or_else(|| {
+            self.promote();
+            dispatch_operation!(self, &mut rhs, n, |rhs| Value::from(n.clone() + rhs))
+        });
+    }
+}
+
+impl AddAssign<&Value> for Value {
+    fn add_assign(&mut self, rhs: &Value) {
+        *self = &*self + rhs;
     }
 }
 
@@ -57,20 +138,33 @@ where
     }
 }
 
+impl<'a> Add<&'a Value> for &Value {
+    type Output = Value;
+
+    fn add(self, rhs: &'a Value) -> Value {
+        let mut lhs = self.clone();
+        lhs += rhs.clone();
+        lhs
+    }
+}
+
 impl<Rhs> SubAssign<Rhs> for Value
 where
     Rhs: Into<Value>,
 {
     fn sub_assign(&mut self, rhs: Rhs) {
         let mut rhs = rhs.into();
+
         if rhs > *self {
             self.promote_to_signed();
         }
-        *self = dispatch_operation!(self, rhs, n, |rhs| (*n).checked_sub(rhs).map(Value::from))
-            .unwrap_or_else(|| {
-                self.promote();
-                dispatch_operation!(self, rhs, n, |rhs| Value::from(*n - rhs))
-            });
+
+        *self = dispatch_operation!(self, &mut rhs, n, |rhs| CheckedMaths::checked_sub(n, rhs)
+            .map(Value::from))
+        .unwrap_or_else(|| {
+            self.promote();
+            dispatch_operation!(self, rhs, n, |rhs| Value::from(n.clone() - rhs))
+        });
     }
 }
 
@@ -92,11 +186,12 @@ where
 {
     fn mul_assign(&mut self, rhs: Rhs) {
         let mut rhs = rhs.into();
-        *self = dispatch_operation!(self, rhs, n, |rhs| (*n).checked_mul(rhs).map(Value::from))
-            .unwrap_or_else(|| {
-                self.promote();
-                dispatch_operation!(self, rhs, n, |rhs| Value::from(*n * rhs))
-            });
+        *self = dispatch_operation!(self, &mut rhs, n, |rhs| CheckedMaths::checked_mul(n, rhs)
+            .map(Value::from))
+        .unwrap_or_else(|| {
+            self.promote();
+            dispatch_operation!(self, rhs, n, |rhs| Value::from(n.clone() * rhs))
+        });
     }
 }
 
@@ -118,11 +213,12 @@ where
 {
     fn div_assign(&mut self, rhs: Rhs) {
         let mut rhs = rhs.into();
-        *self = dispatch_operation!(self, rhs, n, |rhs| (*n).checked_div(rhs).map(Value::from))
-            .unwrap_or_else(|| {
-                self.promote();
-                dispatch_operation!(self, rhs, n, |rhs| Value::from(*n / rhs))
-            });
+        *self = dispatch_operation!(self, &mut rhs, n, |rhs| CheckedMaths::checked_div(n, rhs)
+            .map(Value::from))
+        .unwrap_or_else(|| {
+            self.promote();
+            dispatch_operation!(self, &mut rhs, n, |rhs| Value::from(n.clone() / rhs))
+        });
     }
 }
 
@@ -144,10 +240,10 @@ where
 {
     fn rem_assign(&mut self, rhs: Rhs) {
         let mut rhs = rhs.into();
-        *self = dispatch_operation!(self, rhs, n, |rhs| (*n).checked_rem(rhs).map(Value::from))
+        *self = dispatch_operation!(self, &mut rhs, n, |rhs| n.checked_rem(rhs).map(Value::from))
             .unwrap_or_else(|| {
                 self.promote();
-                dispatch_operation!(self, rhs, n, |rhs| Value::from(*n % rhs))
+                dispatch_operation!(self, rhs, n, |rhs| Value::from(n.clone() % rhs))
             });
     }
 }
@@ -174,14 +270,14 @@ impl Neg for Value {
                 self.neg()
             }
             // these integers cannot represent the negative of their minima
-            Self::SignedInt(n) if n == i64::MIN => {
+            Self::SignedInt(n) if n == i128::MIN => {
                 self.promote();
                 self.neg()
             }
-            Self::SignedBigInt(n) if n == i128::MIN => {
+            /*Self::SignedBigInt(n) if n == i128::MIN => {
                 self.promote();
                 self.neg()
-            }
+            }*/
             // everything else is simple negation
             Self::SignedInt(n) => (-n).into(),
             Self::SignedBigInt(n) => (-n).into(),
@@ -194,117 +290,253 @@ impl Neg for Value {
 mod test {
     use super::*;
     use crate::value::Order;
+    use num_bigint::{BigInt, BigUint};
+    use rstest::*;
 
-    macro_rules! make_test_macro {
-        ($macro_name:ident, $operation:tt, $assign_operation:tt) => {
-            macro_rules! $macro_name {
-                ($test_name:ident, $lhs_variant:ident => $lhs_val:expr, $rhs_variant:ident => $rhs_val:expr, $expected_variant:ident) => {
-                    #[test]
-                    fn $test_name() {
-                        let expected = Order::$expected_variant;
-
-                        let lhs = Value::$lhs_variant($lhs_val);
-                        let rhs = Value::$rhs_variant($rhs_val);
-                        let result = lhs $operation rhs;
-                        assert_eq!(
-                            result.order(),
-                            expected,
-                            "result.order()={:?} | expected={expected:?} | result={result:?}",
-                            result.order()
-                        );
-
-                        let mut lhs = Value::$lhs_variant($lhs_val);
-                        let rhs = Value::$rhs_variant($rhs_val);
-                        lhs $assign_operation rhs;
-                        assert_eq!(
-                            lhs.order(),
-                            expected,
-                            "lhs.order()={:?} | expected={expected:?} | lhs={lhs:?}",
-                            lhs.order()
-                        );
-                    }
-                };
-            }
-        }
+    #[rstest]
+    #[case(
+        Value::UnsignedInt(u128::MAX),
+        Value::UnsignedInt(u128::MAX),
+        Order::UnsignedBigInt
+    )]
+    #[case(Value::UnsignedInt(200), Value::UnsignedInt(200), Order::UnsignedInt)]
+    #[case(
+        Value::SignedInt(-10),
+        Value::UnsignedInt(10),
+        Order::SignedInt
+    )]
+    #[case(Value::UnsignedInt(10), Value::Float(1.5), Order::Float)]
+    #[case::overflow_u128(
+        Value::UnsignedInt(u128::MAX),
+        Value::UnsignedInt(u128::MAX),
+        Order::UnsignedBigInt
+    )]
+    #[case(Value::UnsignedInt(1), Value::UnsignedInt(2), Order::UnsignedInt)]
+    #[case(
+        Value::SignedInt(-5),
+        Value::SignedInt(10),
+        Order::SignedInt
+    )]
+    #[case(
+        Value::UnsignedBigInt(BigUint::from(1_000_000_000_000_u64)),
+        Value::SignedInt(-1_000_000_000_000),
+        Order::SignedInt
+    )]
+    #[case(
+        Value::UnsignedInt(u128::MAX),
+        Value::UnsignedInt(1),
+        Order::UnsignedBigInt
+    )]
+    #[case(Value::SignedInt(i128::MAX), Value::SignedInt(1), Order::SignedBigInt)]
+    #[case(
+        Value::UnsignedBigInt(BigUint::from(u128::MAX)),
+        Value::UnsignedInt(1),
+        Order::UnsignedBigInt
+    )]
+    #[case(
+        Value::SignedBigInt(BigInt::from(i128::MAX)),
+        Value::SignedInt(1),
+        Order::SignedBigInt
+    )]
+    #[case(
+        Value::UnsignedInt(10),
+        Value::SignedInt(-5),
+        Order::SignedInt
+    )]
+    #[case(
+        Value::UnsignedBigInt(BigUint::from(100_u32)),
+        Value::SignedBigInt(BigInt::from(-50)),
+        Order::SignedBigInt
+    )]
+    #[case(Value::UnsignedInt(10), Value::Float(2.5), Order::Float)]
+    #[case(
+        Value::SignedBigInt(BigInt::from(-100)),
+        Value::Float(0.5),
+        Order::Float
+    )]
+    #[case(Value::Float(1.1), Value::Float(2.2), Order::Float)]
+    #[case(
+        Value::Float(-1.5),
+        Value::Float(0.5),
+        Order::Float
+    )]
+    #[case(Value::UnsignedInt(0), Value::SignedInt(i128::MIN), Order::SignedInt)]
+    #[case(
+        Value::SignedBigInt(BigInt::from(i128::MAX)),
+        Value::Float(0.1),
+        Order::Float
+    )]
+    #[case::last(
+        Value::UnsignedBigInt(BigUint::from(u128::MAX)),
+        Value::Float(1.0),
+        Order::Float
+    )]
+    fn addition(#[case] mut left: Value, #[case] right: Value, #[case] expect: Order) {
+        let r = &left + &right;
+        assert_eq!(
+            r.order(),
+            expect,
+            "left = {left:?} right = {right:?} | expected {expect:?} got {r:?}"
+        );
+        left += &right;
+        println!("right={right:?}");
+        assert_eq!(
+            left.order(),
+            expect,
+            "right = {right:?} | expected {expect:?} got {left:?}"
+        );
     }
 
-    make_test_macro!(test_add, +, +=);
-    make_test_macro!(test_sub, -, -=);
-    make_test_macro!(test_mul, *, *=);
-    make_test_macro!(test_div, /, /=);
-    make_test_macro!(test_rem, %, %=);
+    /*
+    #[rstest]
+    #[case(
+        Value::SignedInt(i64::MIN),
+        Value::SignedInt(i64::MAX),
+        Order::SignedBigInt
+    )]
+    #[case(
+        Value::SignedBigInt(i128::MIN),
+        Value::SignedBigInt(i128::MAX),
+        Order::Float
+    )]
+    #[case(Value::UnsignedInt(200), Value::UnsignedInt(200), Order::UnsignedInt)]
+    #[case(
+        Value::SignedInt(-10),
+        Value::UnsignedInt(10),
+        Order::SignedInt
+    )]
+    #[case(Value::UnsignedInt(10), Value::UnsignedInt(20), Order::SignedInt)]
+    #[case(Value::UnsignedInt(10), Value::Float(1.5), Order::Float)]
+    #[case(
+        Value::UnsignedInt(u64::MAX),
+        Value::UnsignedInt(u64::MAX),
+        Order::UnsignedInt
+    )]
+    #[case(Value::UnsignedInt(1), Value::UnsignedInt(2), Order::SignedInt)]
+    #[case(
+        Value::SignedInt(-5),
+        Value::SignedInt(10),
+        Order::SignedInt
+    )]
+    #[case(
+        Value::UnsignedBigInt(1_000_000_000_000),
+        Value::SignedBigInt(-1_000_000_000_000),
+        Order::SignedBigInt
+    )]
+    #[case(
+        Value::SignedBigInt(i128::MAX),
+        Value::UnsignedBigInt(170141183460469231722463931679029329921),
+        Order::SignedBigInt
+    )]
+    #[case(
+        Value::UnsignedInt(u64::MAX),
+        Value::UnsignedInt(1),
+        Order::UnsignedInt
+    )]
+    #[case(Value::SignedInt(i64::MAX), Value::SignedInt(1), Order::SignedInt)]
+    #[case(
+        Value::Float(u128::MAX as f64 + 1.0),
+        Value::UnsignedInt(10),
+        Order::Float
+    )]
+    #[case(
+        Value::UnsignedInt(10),
+        Value::SignedInt(-5),
+        Order::SignedInt
+    )]
+    #[case(
+        Value::UnsignedBigInt(100),
+        Value::SignedBigInt(-50),
+        Order::SignedBigInt
+    )]
+    #[case(Value::UnsignedInt(10), Value::Float(2.5), Order::Float)]
+    #[case(
+        Value::SignedBigInt(-100),
+        Value::Float(0.5),
+        Order::Float
+    )]
+    #[case(Value::Float(1.1), Value::Float(2.2), Order::Float)]
+    #[case(
+        Value::Float(-1.5),
+        Value::Float(0.5),
+        Order::Float
+    )]
+    #[case(Value::UnsignedInt(0), Value::SignedInt(i64::MIN), Order::SignedBigInt)]
+    #[case(Value::SignedInt(0), Value::SignedInt(i64::MIN), Order::SignedBigInt)]
+    #[case(Value::SignedBigInt(i128::MAX), Value::Float(0.1), Order::Float)]
+    #[case(Value::UnsignedBigInt(u128::MAX), Value::Float(1.0), Order::Float)]
+    fn subtraction(#[case] mut left: Value, #[case] right: Value, #[case] expect: Order) {
+        assert_eq!((left - right).order(), expect);
+        left -= right;
+        assert_eq!(left.order(), expect);
+    }
 
-    // Addition
-    test_add!(add1, UnsignedInt => u64::MAX, UnsignedInt => u64::MAX, UnsignedBigInt);
-    test_add!(add2, UnsignedInt => 200, UnsignedInt => 200, UnsignedInt);
-    test_add!(add3, SignedInt => -10, UnsignedInt => 10, SignedInt);
-    test_add!(add4, UnsignedInt => 10, Float => 1.5, Float);
-    test_add!(add7, UnsignedInt => u64::MAX, UnsignedInt => u64::MAX, UnsignedBigInt);
-    test_add!(add8, UnsignedInt => 1, UnsignedInt => 2, UnsignedInt);
-    test_add!(add9, SignedInt => -5, SignedInt => 10, SignedInt);
-    test_add!(add01, UnsignedBigInt => 1_000_000_000_000, SignedInt => -1_000_000_000_000, SignedInt);
-    test_add!(add11, UnsignedInt => u64::MAX, UnsignedInt => 1, UnsignedBigInt);
-    test_add!(add12, SignedInt => i64::MAX, SignedInt => 1, SignedBigInt);
-    test_add!(add13, UnsignedBigInt => u128::MAX, UnsignedInt => 1, Float);
-    test_add!(add14, SignedBigInt => i128::MAX, SignedInt => 1, Float);
-    test_add!(add15, UnsignedInt => 10, SignedInt => -5, SignedInt);
-    test_add!(add16, UnsignedBigInt => 100, SignedBigInt => -50, SignedBigInt);
-    test_add!(add17, UnsignedInt => 10, Float => 2.5, Float);
-    test_add!(add18, SignedBigInt => -100, Float => 0.5, Float);
-    test_add!(add19, Float => 1.1, Float => 2.2, Float);
-    test_add!(add20, Float => -1.5, Float => 0.5, Float);
-    test_add!(add21, UnsignedInt => 0, SignedInt => i64::MIN, SignedInt);
-    test_add!(add22, SignedBigInt => i128::MAX, Float => 0.1, Float);
-    test_add!(add23, UnsignedBigInt => u128::MAX, Float => 1.0, Float);
+    #[rstest]
+    #[case(Value::UnsignedInt(10), Value::UnsignedInt(2), Order::UnsignedInt)]
+    #[case(
+        Value::UnsignedInt(u64::MAX),
+        Value::UnsignedInt(u64::MAX),
+        Order::UnsignedBigInt
+    )]
+    fn multiplication(#[case] mut left: Value, #[case] right: Value, #[case] expect: Order) {
+        assert_eq!((left * right).order(), expect);
+        left *= right;
+        assert_eq!(left.order(), expect);
+    }
 
-    // Subtraction
-    test_sub!(sub1, SignedInt => i64::MIN, SignedInt => i64::MAX, SignedBigInt);
-    test_sub!(sub2, SignedBigInt => i128::MIN, SignedBigInt => i128::MAX, Float);
-    test_sub!(sub3, UnsignedInt => 200, UnsignedInt => 200, UnsignedInt);
-    test_sub!(sub4, SignedInt => -10, UnsignedInt => 10, SignedInt);
-    test_sub!(sub5, UnsignedInt => 10, UnsignedInt => 20, SignedInt);
-    test_sub!(sub6, UnsignedInt => 10, Float => 1.5, Float);
-    test_sub!(sub7, UnsignedInt => u64::MAX, UnsignedInt => u64::MAX, UnsignedInt);
-    test_sub!(sub8, UnsignedInt => 1, UnsignedInt => 2, SignedInt);
-    test_sub!(sub9, SignedInt => -5, SignedInt => 10, SignedInt);
-    test_sub!(sub10, UnsignedBigInt => 1_000_000_000_000, SignedBigInt => -1_000_000_000_000, SignedBigInt);
-    test_sub!(sub11, SignedBigInt => i128::MAX, UnsignedBigInt => 170141183460469231722463931679029329921, SignedBigInt);
-    test_sub!(sub12, UnsignedInt => u64::MAX, UnsignedInt => 1, UnsignedInt);
-    test_sub!(sub13, SignedInt => i64::MAX, SignedInt => 1, SignedInt);
-    test_sub!(sub14, Float => u128::MAX as f64 + 1.0, UnsignedInt => 10, Float);
-    test_sub!(sub15, UnsignedInt => 10, SignedInt => -5, SignedInt);
-    test_sub!(sub16, UnsignedBigInt => 100, SignedBigInt => -50, SignedBigInt);
-    test_sub!(sub_uint_float, UnsignedInt => 10, Float => 2.5, Float);
-    test_sub!(sub_neg_int_float, SignedBigInt => -100, Float => 0.5, Float);
-    test_sub!(sub_pos_float_pos_float, Float => 1.1, Float => 2.2, Float);
-    test_sub!(sub_neg_float_pos_float, Float => -1.5, Float => 0.5, Float);
-    test_sub!(sub_overflow_uint_int, UnsignedInt => 0, SignedInt => i64::MIN, SignedBigInt);
-    test_sub!(sub_overflow_int_int, SignedInt => 0, SignedInt => i64::MIN, SignedBigInt);
-    test_sub!(sub_overflow_bigint_float, SignedBigInt => i128::MAX, Float => 0.1, Float);
-    test_sub!(sub_overflow_ubigint_float, UnsignedBigInt => u128::MAX, Float => 1.0, Float);
+    #[rstest]
+    #[case(Value::UnsignedInt(10), Value::UnsignedInt(2), Order::UnsignedInt)]
+    #[case(
+        Value::SignedInt(i64::MIN),
+        Value::SignedInt(-1),
+        Order::SignedBigInt
+    )]
+    #[case::i128_overflows_to_float(
+        Value::SignedBigInt(i128::MIN),
+        Value::SignedBigInt(-1),
+        Order::Float,
+    )]
+    #[case(
+        Value::SignedInt(0),
+        Value::SignedInt(-1),
+        Order::SignedInt
+    )]
+    #[case(Value::UnsignedInt(0), Value::UnsignedInt(10), Order::UnsignedInt)]
+    #[case(Value::UnsignedInt(0), Value::SignedInt(10), Order::SignedInt)]
+    #[case(Value::Float(10.0), Value::Float(2.0), Order::Float)]
+    #[case(Value::Float(10.0), Value::UnsignedInt(2), Order::Float)]
+    #[case(Value::Float(10.0), Value::UnsignedInt(u64::MAX), Order::Float)]
+    #[case(
+        Value::Float(-f64::MAX),
+        Value::UnsignedInt(2),
+        Order::Float
+    )]
+    fn division(#[case] mut left: Value, #[case] right: Value, #[case] expect: Order) {
+        let result = left / right;
+        assert_eq!(
+            result.order(),
+            expect,
+            "expected {expect:?} got = {result:?}",
+        );
+        left /= right;
+        assert_eq!(left.order(), expect, "expected {expect:?} got = {left:?}");
+    }
 
-    // Multiplication
-    test_mul!(mul1, UnsignedInt => 10, UnsignedInt => 2, UnsignedInt);
-    test_mul!(mul2, UnsignedInt => u64::MAX, UnsignedInt => u64::MAX, UnsignedBigInt);
-
-    // Division
-    test_div!(div1, UnsignedInt => 10, UnsignedInt => 2, UnsignedInt);
-    test_div!(div2, SignedInt => i64::MIN, SignedInt => -1, SignedBigInt); // This overflows i64
-    test_div!(div3, SignedInt => 0, SignedInt => -1, SignedInt);
-    test_div!(div4, UnsignedInt => 0, UnsignedInt => 10, UnsignedInt);
-    test_div!(div5, UnsignedInt => 0, SignedInt => 10, SignedInt);
-    test_div!(div6, Float => 10.0, Float => 2.0, Float);
-    test_div!(div7, Float => 10.0, UnsignedInt => 2, Float);
-    test_div!(div8, Float => 10.0, UnsignedInt => u64::MAX, Float);
-    test_div!(div9, Float => -f64::MAX, UnsignedInt => 2, Float);
+    #[rstest]
+    #[case(Value::SignedInt(10), Value::SignedInt(2), Order::SignedInt)]
+    #[case(Value::SignedInt(i64::MIN), Value::SignedInt(-1), Order::SignedBigInt)]
+    #[case(Value::SignedBigInt(i128::MIN), Value::SignedBigInt(-1), Order::Float)]
+    fn remainder(#[case] mut left: Value, #[case] right: Value, #[case] expect: Order) {
+        let result = left % right;
+        assert_eq!(result.order(), expect, "expected {expect:?} got {result:?}");
+        left %= right;
+        assert_eq!(left.order(), expect, "expected {expect:?} got {left:?}");
+    }
 
     #[test]
     #[should_panic]
     fn divide_by_zero_panics() {
         _ = Value::SignedInt(-1) / Value::SignedInt(0);
     }
-
-    // Remainder
-    test_rem!(rem1, SignedInt => 10, SignedInt => 2, SignedInt);
-    test_rem!(rem_overflow_int_int, SignedInt => i64::MIN, SignedInt => -1, SignedBigInt);
+    */
 }

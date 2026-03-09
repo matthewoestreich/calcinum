@@ -19,35 +19,102 @@ macro_rules! dispatch_operation {
             $rhs.order(),
             "orders must match after match_orders"
         );
-
         match $lhs {
-            Value::UnsignedInt(n) => {
-                let rhs = u64::try_from($rhs).expect("orders must match");
-                let $n = n;
-                $op(rhs)
-            }
-            Value::UnsignedBigInt(n) => {
+            Value::UnsignedInt($n) => {
                 let rhs = u128::try_from($rhs).expect("orders must match");
-                let $n = n;
                 $op(rhs)
             }
-            Value::SignedInt(n) => {
-                let rhs = i64::try_from($rhs).expect("orders must match");
-                let $n = n;
+            Value::UnsignedBigInt($n) => {
+                let rhs = num_bigint::BigUint::try_from($rhs).expect("orders must match");
                 $op(rhs)
             }
-            Value::SignedBigInt(n) => {
+            Value::SignedInt($n) => {
                 let rhs = i128::try_from($rhs).expect("orders must match");
-                let $n = n;
                 $op(rhs)
             }
-            Value::Float(n) => {
+            Value::SignedBigInt($n) => {
+                let rhs = num_bigint::BigInt::try_from($rhs).expect("orders must match");
+                $op(rhs)
+            }
+            Value::Float($n) => {
                 let rhs = f64::try_from($rhs).expect("orders must match");
-                let $n = n;
                 $op(rhs)
             }
         }
     }};
+}
+
+/*
+macro_rules! dispatch_operation {
+    ($lhs:expr, $rhs:expr, $op:expr) => {{
+        let mut rhs = $rhs;
+        $lhs.match_orders(&mut rhs);
+
+        match $lhs {
+            Value::UnsignedInt(ref mut n) => {
+                let rhs = u128::try_from(&rhs).expect("orders must match");
+                $op(n, rhs)
+            }
+            Value::UnsignedBigInt(ref mut n) => {
+                let rhs = num_bigint::BigUint::try_from(&rhs).expect("orders must match");
+                $op(n, rhs)
+            }
+            Value::SignedInt(ref mut n) => {
+                let rhs = i128::try_from(&rhs).expect("orders must match");
+                $op(n, rhs)
+            }
+            Value::SignedBigInt(ref mut n) => {
+                let rhs = num_bigint::BigInt::try_from(&rhs).expect("orders must match");
+                $op(n, rhs)
+            }
+            Value::Float(ref mut n) => {
+                let rhs = f64::try_from(&rhs).expect("orders must match");
+                $op(n, rhs)
+            }
+        }
+    }};
+}
+*/
+
+/*
+macro_rules! dispatch_operation {
+    ($lhs:expr, $rhs:expr, $n:ident, $op:expr) => {{
+        $lhs.match_orders(&mut $rhs);
+        debug_assert_eq!(
+            $lhs.order(),
+            $rhs.order(),
+            "orders must match after match_orders"
+        );
+
+        match $lhs {
+            Value::UnsignedInt(n) => {
+                let rhs = u128::try_from(&$rhs).expect("orders must match");
+                let $n = n;
+                $op($n, rhs)
+            }
+            Value::UnsignedBigInt(n) => {
+                let rhs = num_bigint::BigUint::try_from(&$rhs).expect("orders must match");
+                let $n = n;
+                $op($n, rhs)
+            }
+            Value::SignedInt(n) => {
+                let rhs = i128::try_from(&$rhs).expect("orders must match");
+                let $n = n;
+                $op($n, rhs)
+            }
+            Value::SignedBigInt(n) => {
+                let rhs = num_bigint::BigInt::try_from(&$rhs).expect("orders must match");
+                let $n = n;
+                $op($n, rhs)
+            }
+            Value::Float(n) => {
+                let rhs = f64::try_from(&$rhs).expect("orders must match");
+                let $n = n;
+                $op($n, rhs)
+            }
+        }
+    }};
+    // INTS variant for operations returning Result<Value, Error>
     (INTS: $lhs:expr, $rhs:expr, $n:ident, $op:expr) => {{
         $lhs.match_orders(&mut $rhs);
         debug_assert_eq!(
@@ -81,5 +148,6 @@ macro_rules! dispatch_operation {
         }
     }};
 }
+*/
 
 pub(crate) use dispatch_operation;

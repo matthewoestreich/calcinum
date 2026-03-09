@@ -3,8 +3,8 @@ use std::cmp::Ordering;
 
 impl Ord for Value {
     fn cmp(&self, other: &Self) -> Ordering {
-        let mut left = *self;
-        let mut right = *other;
+        let mut left = self.clone(); //*self;
+        let mut right = other.clone(); //*other;
         left.match_orders(&mut right);
 
         match (left, right) {
@@ -26,8 +26,8 @@ impl PartialOrd for Value {
 
 impl PartialEq for Value {
     fn eq(&self, other: &Self) -> bool {
-        let mut left = *self;
-        let mut right = *other;
+        let mut left = self.clone(); //*self;
+        let mut right = other.clone(); //*other;
         dispatch_operation!(left, right, l, |r| l == r)
     }
 }
