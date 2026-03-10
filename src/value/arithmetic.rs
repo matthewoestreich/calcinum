@@ -105,6 +105,8 @@ impl CheckedMaths for BigUint {
     }
 }
 
+// ************************** Add ************************************************************
+
 #[allow(clippy::clone_on_copy)]
 impl<Rhs> AddAssign<Rhs> for Value
 where
@@ -148,6 +150,8 @@ impl<'a> Add<&'a Value> for &Value {
     }
 }
 
+// ************************** Sub ************************************************************
+
 #[allow(clippy::clone_on_copy)]
 impl<Rhs> SubAssign<Rhs> for Value
 where
@@ -169,6 +173,12 @@ where
     }
 }
 
+impl SubAssign<&Value> for Value {
+    fn sub_assign(&mut self, rhs: &Value) {
+        *self = &*self - rhs;
+    }
+}
+
 impl<Rhs> Sub<Rhs> for Value
 where
     Rhs: Into<Value>,
@@ -180,6 +190,18 @@ where
         self
     }
 }
+
+impl<'a> Sub<&'a Value> for &Value {
+    type Output = Value;
+
+    fn sub(self, rhs: &'a Value) -> Value {
+        let mut lhs = self.clone();
+        lhs -= rhs.clone();
+        lhs
+    }
+}
+
+// ************************** Mul ************************************************************
 
 #[allow(clippy::clone_on_copy)]
 impl<Rhs> MulAssign<Rhs> for Value
@@ -197,6 +219,12 @@ where
     }
 }
 
+impl MulAssign<&Value> for Value {
+    fn mul_assign(&mut self, rhs: &Value) {
+        *self = &*self * rhs;
+    }
+}
+
 impl<Rhs> Mul<Rhs> for Value
 where
     Rhs: Into<Value>,
@@ -208,6 +236,18 @@ where
         self
     }
 }
+
+impl<'a> Mul<&'a Value> for &Value {
+    type Output = Value;
+
+    fn mul(self, rhs: &'a Value) -> Value {
+        let mut lhs = self.clone();
+        lhs *= rhs.clone();
+        lhs
+    }
+}
+
+// ************************** Div ************************************************************
 
 #[allow(clippy::clone_on_copy)]
 impl<Rhs> DivAssign<Rhs> for Value
@@ -225,6 +265,12 @@ where
     }
 }
 
+impl DivAssign<&Value> for Value {
+    fn div_assign(&mut self, rhs: &Value) {
+        *self = &*self / rhs;
+    }
+}
+
 impl<Rhs> Div<Rhs> for Value
 where
     Rhs: Into<Value>,
@@ -236,6 +282,18 @@ where
         self
     }
 }
+
+impl<'a> Div<&'a Value> for &Value {
+    type Output = Value;
+
+    fn div(self, rhs: &'a Value) -> Value {
+        let mut lhs = self.clone();
+        lhs /= rhs.clone();
+        lhs
+    }
+}
+
+// ************************** Rem ************************************************************
 
 #[allow(clippy::clone_on_copy)]
 impl<Rhs> RemAssign<Rhs> for Value
@@ -252,6 +310,12 @@ where
     }
 }
 
+impl RemAssign<&Value> for Value {
+    fn rem_assign(&mut self, rhs: &Value) {
+        *self = &*self % rhs;
+    }
+}
+
 impl<Rhs> Rem<Rhs> for Value
 where
     Rhs: Into<Value>,
@@ -263,6 +327,18 @@ where
         self
     }
 }
+
+impl<'a> Rem<&'a Value> for &Value {
+    type Output = Value;
+
+    fn rem(self, rhs: &'a Value) -> Value {
+        let mut lhs = self.clone();
+        lhs %= rhs.clone();
+        lhs
+    }
+}
+
+// ************************** Neg ************************************************************
 
 impl Neg for Value {
     type Output = Self;
@@ -401,20 +477,19 @@ mod test {
         );
     }
 
-    /*
     #[rstest]
-    #[case(
-        Value::SignedInt(i64::MIN),
-        Value::SignedInt(i64::MAX),
+    #[case::sub_1(
+        Value::SignedInt(i128::MIN),
+        Value::SignedInt(i128::MAX),
         Order::SignedBigInt
     )]
-    #[case(
-        Value::SignedBigInt(i128::MIN),
-        Value::SignedBigInt(i128::MAX),
-        Order::Float
+    #[case::sub_2(
+        Value::SignedBigInt(i128::MIN.into()),
+        Value::SignedBigInt(i128::MAX.into()),
+        Order::SignedBigInt
     )]
-    #[case(Value::UnsignedInt(200), Value::UnsignedInt(200), Order::UnsignedInt)]
-    #[case(
+    #[case::sub_3(Value::UnsignedInt(200), Value::UnsignedInt(200), Order::UnsignedInt)]
+    #[case::sub_4(
         Value::SignedInt(-10),
         Value::UnsignedInt(10),
         Order::SignedInt
@@ -422,8 +497,8 @@ mod test {
     #[case(Value::UnsignedInt(10), Value::UnsignedInt(20), Order::SignedInt)]
     #[case(Value::UnsignedInt(10), Value::Float(1.5), Order::Float)]
     #[case(
-        Value::UnsignedInt(u64::MAX),
-        Value::UnsignedInt(u64::MAX),
+        Value::UnsignedInt(u128::MAX),
+        Value::UnsignedInt(u128::MAX),
         Order::UnsignedInt
     )]
     #[case(Value::UnsignedInt(1), Value::UnsignedInt(2), Order::SignedInt)]
@@ -433,21 +508,21 @@ mod test {
         Order::SignedInt
     )]
     #[case(
-        Value::UnsignedBigInt(1_000_000_000_000),
-        Value::SignedBigInt(-1_000_000_000_000),
+        Value::UnsignedBigInt(1_000_000_000_000_u128.into()),
+        Value::SignedBigInt((-1_000_000_000_000_i128).into()),
         Order::SignedBigInt
     )]
     #[case(
-        Value::SignedBigInt(i128::MAX),
-        Value::UnsignedBigInt(170141183460469231722463931679029329921),
+        Value::SignedBigInt(i128::MAX.into()),
+        Value::UnsignedBigInt(170141183460469231722463931679029329921_u128.into()),
         Order::SignedBigInt
     )]
     #[case(
-        Value::UnsignedInt(u64::MAX),
+        Value::UnsignedInt(u128::MAX),
         Value::UnsignedInt(1),
         Order::UnsignedInt
     )]
-    #[case(Value::SignedInt(i64::MAX), Value::SignedInt(1), Order::SignedInt)]
+    #[case(Value::SignedInt(i128::MAX), Value::SignedInt(1), Order::SignedInt)]
     #[case(
         Value::Float(u128::MAX as f64 + 1.0),
         Value::UnsignedInt(10),
@@ -459,13 +534,13 @@ mod test {
         Order::SignedInt
     )]
     #[case(
-        Value::UnsignedBigInt(100),
-        Value::SignedBigInt(-50),
+        Value::UnsignedBigInt(100_u32.into()),
+        Value::SignedBigInt((-50).into()),
         Order::SignedBigInt
     )]
     #[case(Value::UnsignedInt(10), Value::Float(2.5), Order::Float)]
     #[case(
-        Value::SignedBigInt(-100),
+        Value::SignedBigInt((-100).into()),
         Value::Float(0.5),
         Order::Float
     )]
@@ -475,40 +550,62 @@ mod test {
         Value::Float(0.5),
         Order::Float
     )]
-    #[case(Value::UnsignedInt(0), Value::SignedInt(i64::MIN), Order::SignedBigInt)]
-    #[case(Value::SignedInt(0), Value::SignedInt(i64::MIN), Order::SignedBigInt)]
-    #[case(Value::SignedBigInt(i128::MAX), Value::Float(0.1), Order::Float)]
-    #[case(Value::UnsignedBigInt(u128::MAX), Value::Float(1.0), Order::Float)]
+    #[case(
+        Value::UnsignedInt(0),
+        Value::SignedInt(i128::MIN),
+        Order::SignedBigInt
+    )]
+    #[case(Value::SignedInt(0), Value::SignedInt(i128::MIN), Order::SignedBigInt)]
+    #[case(Value::SignedBigInt(i128::MAX.into()), Value::Float(0.1), Order::Float)]
+    #[case(Value::UnsignedBigInt(u128::MAX.into()), Value::Float(1.0), Order::Float)]
     fn subtraction(#[case] mut left: Value, #[case] right: Value, #[case] expect: Order) {
-        assert_eq!((left - right).order(), expect);
-        left -= right;
-        assert_eq!(left.order(), expect);
+        let result = &left - &right;
+        assert_eq!(
+            result.order(),
+            expect,
+            "left = {left:?} right = {right:?} | expected {expect:?} got {result:?}"
+        );
+        left -= &right;
+        assert_eq!(
+            left.order(),
+            expect,
+            "right = {right:?} | expected {expect:?} got {left:?}"
+        );
     }
 
     #[rstest]
     #[case(Value::UnsignedInt(10), Value::UnsignedInt(2), Order::UnsignedInt)]
     #[case(
-        Value::UnsignedInt(u64::MAX),
-        Value::UnsignedInt(u64::MAX),
+        Value::UnsignedInt(u128::MAX),
+        Value::UnsignedInt(u128::MAX),
         Order::UnsignedBigInt
     )]
     fn multiplication(#[case] mut left: Value, #[case] right: Value, #[case] expect: Order) {
-        assert_eq!((left * right).order(), expect);
-        left *= right;
-        assert_eq!(left.order(), expect);
+        let result = &left * &right;
+        assert_eq!(
+            result.order(),
+            expect,
+            "left = {left:?} right = {right:?} | expected {expect:?} got {result:?}"
+        );
+        left *= &right;
+        assert_eq!(
+            left.order(),
+            expect,
+            "right = {right:?} | expected {expect:?} got {left:?}"
+        );
     }
 
     #[rstest]
     #[case(Value::UnsignedInt(10), Value::UnsignedInt(2), Order::UnsignedInt)]
     #[case(
-        Value::SignedInt(i64::MIN),
+        Value::SignedInt(i128::MIN),
         Value::SignedInt(-1),
         Order::SignedBigInt
     )]
-    #[case::i128_overflows_to_float(
-        Value::SignedBigInt(i128::MIN),
-        Value::SignedBigInt(-1),
-        Order::Float,
+    #[case::i128_overflow(
+        Value::SignedBigInt(i128::MIN.into()),
+        Value::SignedBigInt((-1).into()),
+        Order::SignedBigInt,
     )]
     #[case(
         Value::SignedInt(0),
@@ -519,32 +616,44 @@ mod test {
     #[case(Value::UnsignedInt(0), Value::SignedInt(10), Order::SignedInt)]
     #[case(Value::Float(10.0), Value::Float(2.0), Order::Float)]
     #[case(Value::Float(10.0), Value::UnsignedInt(2), Order::Float)]
-    #[case(Value::Float(10.0), Value::UnsignedInt(u64::MAX), Order::Float)]
+    #[case(Value::Float(10.0), Value::UnsignedInt(u128::MAX), Order::Float)]
     #[case(
         Value::Float(-f64::MAX),
         Value::UnsignedInt(2),
         Order::Float
     )]
     fn division(#[case] mut left: Value, #[case] right: Value, #[case] expect: Order) {
-        let result = left / right;
+        let result = &left / &right;
         assert_eq!(
             result.order(),
             expect,
-            "expected {expect:?} got = {result:?}",
+            "left = {left:?} right = {right:?} | expected {expect:?} got {result:?}",
         );
-        left /= right;
-        assert_eq!(left.order(), expect, "expected {expect:?} got = {left:?}");
+        left /= &right;
+        assert_eq!(
+            left.order(),
+            expect,
+            "right = {right:?} | expected {expect:?} got {left:?}"
+        );
     }
 
     #[rstest]
-    #[case(Value::SignedInt(10), Value::SignedInt(2), Order::SignedInt)]
-    #[case(Value::SignedInt(i64::MIN), Value::SignedInt(-1), Order::SignedBigInt)]
-    #[case(Value::SignedBigInt(i128::MIN), Value::SignedBigInt(-1), Order::Float)]
+    #[case::rem_1(Value::SignedInt(10), Value::SignedInt(2), Order::SignedInt)]
+    #[case::rem_2(Value::SignedInt(i128::MIN), Value::SignedInt(-1), Order::SignedBigInt)]
+    #[case::rem_3(Value::SignedBigInt(i128::MIN.into()), Value::SignedBigInt((-1).into()), Order::SignedBigInt)]
     fn remainder(#[case] mut left: Value, #[case] right: Value, #[case] expect: Order) {
-        let result = left % right;
-        assert_eq!(result.order(), expect, "expected {expect:?} got {result:?}");
-        left %= right;
-        assert_eq!(left.order(), expect, "expected {expect:?} got {left:?}");
+        let result = &left % &right;
+        assert_eq!(
+            result.order(),
+            expect,
+            "left = {left:?} right = {right:?} | expected {expect:?} got {result:?}"
+        );
+        left %= &right;
+        assert_eq!(
+            left.order(),
+            expect,
+            "right = {right:?} | expected {expect:?} got {left:?}"
+        );
     }
 
     #[test]
@@ -552,5 +661,4 @@ mod test {
     fn divide_by_zero_panics() {
         _ = Value::SignedInt(-1) / Value::SignedInt(0);
     }
-    */
 }
