@@ -352,21 +352,22 @@ mod test {
     }
 
     #[rstest]
-    #[case(10, 2, 100)]
-    #[case(i64::MAX, u32::MAX, f64::INFINITY)]
-    #[case(
+    #[case::pow1(10, 2, 100)]
+    #[case::pow2(i64::MAX, u32::MAX, f64::INFINITY)]
+    #[case::pow3(
         4611686018427387903_i64,
         2,
         21267647932558653957237540927630737409_i128
     )]
-    #[case(i128::MAX, 2, 2.894802230932905e76)]
-    #[case(i128::MAX, 3, 4.92525077454931e114)]
+    #[case::pow4(i128::MAX, 2, 2.894802230932905e76)]
+    #[case::pow5(i128::MAX, 3, 4.92525077454931e114)]
     fn pow(
         #[case] value: impl Into<Value>,
         #[case] raise_to: impl Into<Value>,
         #[case] expect_value: impl Into<Value>,
     ) {
         let v: Value = value.into();
+        println!("v = {v:?}");
         let r = v.pow(raise_to).unwrap();
         let expect_value = expect_value.into();
         assert_eq!(r, expect_value, "expected {expect_value:?} got {r:?}");
