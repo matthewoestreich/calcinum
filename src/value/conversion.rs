@@ -189,6 +189,14 @@ impl FromStr for Value {
     type Err = ValueError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if s.contains(".") {
+            return s
+                .parse::<f64>()
+                .map(Self::Float)
+                .map_err(|_| ValueError::Parsing {
+                    value: s.to_string(),
+                });
+        }
         s.parse::<u128>()
             .map(|i| Self::UnsignedInt(i as _))
             .or_else(|_| s.parse::<BigUint>().map(Self::UnsignedBigInt))

@@ -1,70 +1,95 @@
-use regex::Regex;
-use std::{error, fmt};
+use std::{error, fmt, str::FromStr};
 
+mod shunting_yard;
 pub(crate) mod value;
 
 pub use value::{Value, error::ValueError};
 
-pub fn parse_expression(expression: &str) -> Option<String> {
-    shunting_yard(expression)
+pub fn parse_expression(expression: &str) -> Result<Value, CalculatorError> {
+    let sy = shunting_yard::parse(expression).ok_or(CalculatorError::InvalidExpression)?;
+    println!("reverse_polish_notation = {sy:?}");
+    eval_shunting_yard(&sy)
 }
 
-fn tokenize(expression: &str) -> Vec<&str> {
-    // Matches numbers (\d+), variables ([a-zA-Z]+), or single operators/parentheses ([()+\-*/^])
-    let re = Regex::new(r"\d+|[a-zA-Z]+|[()+\-*/^]").unwrap();
-    re.find_iter(expression).map(|mat| mat.as_str()).collect()
-}
-
-// Higher precedence value means higher priority
-fn precedence(op: &str) -> i32 {
-    match op {
-        "+" | "-" => 1,
-        "*" | "x" | "/" => 2,
-        "^" => 3,
-        _ => 0,
-    }
-}
-
-// Returns expression in reverse polish notation.
-fn shunting_yard(infix: &str) -> Option<String> {
-    if infix.is_empty() {
-        return None;
+fn eval_shunting_yard(rpn: &str) -> Result<Value, CalculatorError> {
+    if rpn.is_empty() {
+        return Err(CalculatorError::EmptyExpression);
     }
 
-    let mut output = vec![];
+    let rpn = rpn.trim();
+    let rpn_tokens: Vec<_> = rpn.split_whitespace().collect();
+    println!("rpn_tokens = {rpn_tokens:?}");
     let mut stack = vec![];
-    let tokens = tokenize(infix);
 
-    for token in tokens {
-        match token {
-            "(" => stack.push(token),
-            ")" => {
-                while let Some(t) = stack.pop() {
-                    if t == "(" {
-                        break;
-                    }
-                    output.push(t);
+    for token in rpn_tokens {
+        println!("eval token : {token:?}");
+        if let Ok(v) = Value::from_str(token) {
+            stack.push(v);
+        } else {
+            // Order matters here! 'b' must come before 'a'!
+            let b = stack.pop().expect("stack not empty");
+            let a = stack.pop().expect("stack not empty");
+
+            match token {
+                "+" => {
+                    let result = &a + &b;
+                    println!("add : a = {a:?} + b = {b:?} = {result:?}");
+                    stack.push(result);
                 }
-            }
-            t if t.parse::<i128>().is_ok() || t.parse::<f64>().is_ok() => output.push(t),
-            t => {
-                while let Some(&top) = stack.last() {
-                    if top == "(" || precedence(top) < precedence(t) {
-                        break;
-                    }
-                    output.push(stack.pop().expect("stack not empty"));
+                "-" => {
+                    let result = &a - &b;
+                    println!("sub : a = {a:?} - b = {b:?} = {result:?}");
+                    stack.push(result);
                 }
-                stack.push(t);
-            }
+                "*" | "x" => {
+                    let result = &a * &b;
+                    println!("mul : a = {a:?} * b = {b:?} = {result:?}");
+                    stack.push(result);
+                }
+                "/" => {
+                    let result = &a / &b;
+                    println!("div : a = {a:?} / b = {b:?} = {result:?}");
+                    stack.push(result);
+                }
+
+                "^" => stack.push(a.pow(b)?),
+                _ => {}
+            };
         }
     }
 
-    while let Some(p) = stack.pop() {
-        output.push(p);
-    }
-
-    Some(output.join(" "))
+    stack
+        .into_iter()
+        .next()
+        .ok_or(CalculatorError::InvalidExpression)
 }
+
+#[derive(Debug, Clone)]
+pub enum CalculatorError {
+    EmptyExpression,
+    InvalidExpression,
+    ValueError(ValueError),
+}
+
+impl fmt::Display for CalculatorError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            CalculatorError::EmptyExpression => write!(f, "expression cannot be empty"),
+            CalculatorError::InvalidExpression => {
+                write!(f, "you may be missing a parenthesis or number somewhere")
+            }
+            CalculatorError::ValueError(ve) => write!(f, "value error : {ve}"),
+        }
+    }
+}
+
+impl From<ValueError> for CalculatorError {
+    fn from(error: ValueError) -> Self {
+        Self::ValueError(error)
+    }
+}
+
+impl error::Error for CalculatorError {}
 
 #[derive(Debug, Clone)]
 pub enum ExpressionError {
@@ -88,19 +113,33 @@ mod test {
     use super::*;
 
     #[test]
-    fn shunting_yard_reverse_polish_notation() {
-        let rpn_str = shunting_yard("3 +4* 2 /(1 - 5)").unwrap();
-        let expected = "3 4 2 * 1 5 - / +";
+    fn eval() {
+        let expression = "3 + 4 * 2 / (1 - 5)";
+        let expected = Value::SignedInt(1);
+        let result = parse_expression(expression).unwrap();
         assert_eq!(
-            rpn_str, expected,
-            "expected '{expected:?}' got '{rpn_str:?}'"
+            result, expected,
+            "expression = {expression:?} : expected {expected:?} got {result:?}"
         );
 
-        let rpn_str = shunting_yard("33 +44* 22 /(11 - 55)").unwrap();
-        let expected = "33 44 22 * 11 55 - / +";
+        let expression = "3.1 + 2";
+        let expected = Value::Float(5.1);
+        let result = parse_expression(expression).unwrap();
         assert_eq!(
-            rpn_str, expected,
-            "expected '{expected:?}' got '{rpn_str:?}'"
+            result, expected,
+            "expression = {expression:?} : expected {expected:?} got {result:?}"
+        );
+    }
+
+    #[test]
+    fn float_return() {
+        // Tests return when it should be a Float
+        let expression = "2 / (1 - 56)";
+        let expected = Value::Float(-0.03636363636);
+        let result = parse_expression(expression).unwrap();
+        assert_eq!(
+            result, expected,
+            "expression = {expression:?} : expected {expected:?} got {result:?}"
         );
     }
 }
