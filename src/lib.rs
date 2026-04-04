@@ -1,8 +1,10 @@
 use std::{error, fmt, str::FromStr};
 
+mod number;
 mod shunting_yard;
 pub(crate) mod value;
 
+pub use number::Number;
 pub use value::{Value, error::ValueError};
 
 pub fn parse_expression(expression: &str) -> Result<Value, CalculatorError> {
