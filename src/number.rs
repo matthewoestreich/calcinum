@@ -459,34 +459,6 @@ impl PartialEq for Number {
 impl Eq for Number {}
 
 // ===========================================================================================
-// ========================== NumberOrder ====================================================
-// ===========================================================================================
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub enum NumberOrder {
-    Int,
-    Decimal,
-}
-
-impl From<Number> for NumberOrder {
-    fn from(value: Number) -> Self {
-        match value {
-            Number::Int(_) => Self::Int,
-            Number::Decimal(_) => Self::Decimal,
-        }
-    }
-}
-
-impl From<&Number> for NumberOrder {
-    fn from(value: &Number) -> Self {
-        match value {
-            Number::Int(_) => Self::Int,
-            Number::Decimal(_) => Self::Decimal,
-        }
-    }
-}
-
-// ===========================================================================================
 // ========================== NumberError ====================================================
 // ===========================================================================================
 
@@ -514,6 +486,34 @@ impl From<ParseBigDecimalError> for NumberError {
 }
 
 impl error::Error for NumberError {}
+
+// ===========================================================================================
+// ========================== NumberOrder ====================================================
+// ===========================================================================================
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum NumberOrder {
+    Int,
+    Decimal,
+}
+
+impl From<Number> for NumberOrder {
+    fn from(value: Number) -> Self {
+        match value {
+            Number::Int(_) => Self::Int,
+            Number::Decimal(_) => Self::Decimal,
+        }
+    }
+}
+
+impl From<&Number> for NumberOrder {
+    fn from(value: &Number) -> Self {
+        match value {
+            Number::Int(_) => Self::Int,
+            Number::Decimal(_) => Self::Decimal,
+        }
+    }
+}
 
 // ===========================================================================================
 // ========================== Tests ==========================================================
