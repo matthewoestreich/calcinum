@@ -170,4 +170,10 @@ mod test {
         let r = parse(i).unwrap();
         assert_eq!(r, e, "expected {e} got {r}");
     }
+
+    #[test]
+    fn very_large_numbers() {
+        let r = parse("340282366920938463463374607431768211455 * 2").unwrap();
+        println!("{r}");
+    }
 }
