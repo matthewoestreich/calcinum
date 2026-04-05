@@ -1,4 +1,4 @@
-# calculator-rs
+# calcinum
 
 Calculator capable of handling arbitrarily large numbers, trading speed for precision - we use [`BigInt`](https://github.com/rust-num/num-bigint) and [`BigDecimal`](https://github.com/akubera/bigdecimal-rs) under the hood.
 
