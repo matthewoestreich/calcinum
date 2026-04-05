@@ -13,6 +13,8 @@ You can either work with the exposed `Number` enum directly, or use the `Calcula
 Create `Number::Int` where calculation produces `Number::Decimal`
 
 ```rust
+use calcinum::Number;
+
 let a = Number::Int(1.into());
 let b = Number::Int(2.into());
 let result = a / b;
@@ -22,6 +24,8 @@ println!("{result:?}"); // Number::Decimal(0.5)
 Create `Number::Decimal`
 
 ```rust
+use calcinum::Number;
+
 let x = Number::Int(10.into());
 let y = Number::from_f64(2.2).unwrap(); // Will be Number::Decimal(2.2)
 // Also acceptable:
@@ -39,6 +43,8 @@ println!("{result:?}"); // Number::Decimal(4.54545454545)
 You can simulate pressing keys on a calculator.
 
 ```rust
+use calcinum::Calculator;
+
 let mut c = Calculator::new();
 c.press(Key::Two); // 2
 c.press(Key::Add); // +
@@ -70,6 +76,8 @@ c.clear();
 Create decimals using key press
 
 ```rust
+use calcinum::Calculator;
+
 let mut c = Calculator::new();
 c.press(Key::One);
 c.press(Key::Period);
@@ -82,6 +90,8 @@ println!("{}", c.infix()); // "1.1"
 Create instance with infix expression in one line
 
 ```rust
+use calcinum::Calculator;
+
 let mut c = Calculator::new_with_infix("(2+8)/2");
 let result = c.calculate().unwrap();
 println!("{result:?}"); // Number::Int(5)
@@ -90,6 +100,8 @@ println!("{result:?}"); // Number::Int(5)
 Append infix expression to current infix expression.
 
 ```rust
+use calcinum::Calculator;
+
 let mut c = Calculator::new();
 c.expression("(1+1)");
 // Appended to current expression; does not replace it.
@@ -100,6 +112,8 @@ println!("{}", c.infix()); // "(1+1)*2/12-5*99"
 You can combine `expression("...")` with key `press(Key::_)` in any order.
 
 ```rust
+use calcinum::Calculator;
+
 let mut c = Calculator::new();
 
 // Build infix expression
@@ -120,6 +134,8 @@ println!("{result:?}"); // Number::Int(5)
 You can acheive the same thing via `Calculator`, granted it will be more lines of code, hence the helper..
 
 ```rust
+use calcinum::{Calculator, parse_expression};
+
 // Order of operations
 let result = parse_expression("3 + 4 * 2 / (1 - 5)").unwrap();
 println!("{result:?}"); // Number::Int(1)
