@@ -9,7 +9,7 @@ use std::{
     str::FromStr,
 };
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub enum Number {
     Int(BigInt),
     Decimal(BigDecimal),
@@ -181,14 +181,27 @@ impl FromStr for Number {
 }
 
 // ===========================================================================================
+// ========================== Debug ==========================================================
+// ===========================================================================================
+
+impl fmt::Debug for Number {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Int(i) => write!(f, "Number::Int({i})"),
+            Self::Decimal(d) => write!(f, "Number::Decimal({d})"),
+        }
+    }
+}
+
+// ===========================================================================================
 // ========================== Display ========================================================
 // ===========================================================================================
 
 impl fmt::Display for Number {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Number::Int(big_int) => write!(f, "Number::Int({big_int})"),
-            Number::Decimal(big_decimal) => write!(f, "Number::Decimal({big_decimal})"),
+            Number::Int(big_int) => write!(f, "{big_int}"),
+            Number::Decimal(big_decimal) => write!(f, "{big_decimal}"),
         }
     }
 }
