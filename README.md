@@ -43,7 +43,7 @@ println!("{result:?}"); // Number::Decimal(4.54545454545)
 You can simulate pressing keys on a calculator.
 
 ```rust
-use calcinum::Calculator;
+use calcinum::{Calculator, Key};
 
 let mut c = Calculator::new();
 c.press(Key::Two); // 2
@@ -76,7 +76,7 @@ c.clear();
 Create decimals using key press
 
 ```rust
-use calcinum::Calculator;
+use calcinum::{Calculator, Key};
 
 let mut c = Calculator::new();
 c.press(Key::One);
@@ -112,7 +112,7 @@ println!("{}", c.infix()); // "(1+1)*2/12-5*99"
 You can combine `expression("...")` with key `press(Key::_)` in any order.
 
 ```rust
-use calcinum::Calculator;
+use calcinum::{Calculator, Key};
 
 let mut c = Calculator::new();
 
