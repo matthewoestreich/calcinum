@@ -19,6 +19,13 @@ impl Number {
         Self::try_from(n)
     }
 
+    pub fn pow(&self, exponent: i64) -> Self {
+        match self {
+            Number::Int(big_int) => Number::Int(big_int.pow(exponent as u32)),
+            Number::Decimal(big_decimal) => Number::Decimal(big_decimal.powi(exponent)),
+        }
+    }
+
     /// Sets the scale only on Number::Decimal
     pub fn set_scale(&mut self, scale: i64) {
         if let Self::Decimal(n) = self {

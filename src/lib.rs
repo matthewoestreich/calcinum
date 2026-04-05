@@ -10,7 +10,7 @@ pub use value::{Value, error::ValueError};
 use bigdecimal::ParseBigDecimalError;
 use std::{error, fmt};
 
-pub fn parse_expression(expression: &str) -> Result<Value, CalculatorError> {
+pub fn parse_expression(expression: &str) -> Result<Number, CalculatorError> {
     shunting_yard::parse(expression)
 }
 
