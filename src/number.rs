@@ -1,6 +1,7 @@
 use bigdecimal::{BigDecimal, ParseBigDecimalError};
 use core::fmt;
 use num_bigint::BigInt;
+use num_traits::ToPrimitive;
 use std::{
     cmp::Ordering,
     error,
@@ -19,10 +20,30 @@ impl Number {
         Self::try_from(n)
     }
 
-    pub fn pow(&self, exponent: i64) -> Self {
+    pub fn to_i64(&self) -> Option<i64> {
         match self {
-            Number::Int(big_int) => Number::Int(big_int.pow(exponent as u32)),
-            Number::Decimal(big_decimal) => Number::Decimal(big_decimal.powi(exponent)),
+            Number::Int(big_int) => big_int.to_i64(),
+            Number::Decimal(_) => None,
+        }
+    }
+
+    pub fn to_i32(&self) -> Option<i32> {
+        match self {
+            Number::Int(big_int) => big_int.to_i32(),
+            Number::Decimal(_) => None,
+        }
+    }
+
+    pub fn pow(&self, exponent: i64) -> Result<Self, NumberError> {
+        match self {
+            Number::Decimal(big_decimal) => Ok(Number::Decimal(big_decimal.powi(exponent))),
+            Number::Int(big_int) => {
+                let exponent_u32: u32 = exponent.try_into().map_err(|_| {
+                    let m = format!("Number::Int exponent must fit in u32: {exponent} does not!");
+                    NumberError::InvalidExponent { message: m }
+                })?;
+                Ok(Number::Int(big_int.pow(exponent_u32)))
+            }
         }
     }
 
@@ -166,8 +187,8 @@ impl FromStr for Number {
 impl fmt::Display for Number {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Number::Int(big_int) => write!(f, "{big_int}"),
-            Number::Decimal(big_decimal) => write!(f, "{big_decimal}"),
+            Number::Int(big_int) => write!(f, "Number::Int({big_int})"),
+            Number::Decimal(big_decimal) => write!(f, "Number::Decimal({big_decimal})"),
         }
     }
 }
@@ -471,12 +492,14 @@ impl From<&Number> for NumberOrder {
 #[derive(Debug, Clone)]
 pub enum NumberError {
     Parsing { value: String },
+    InvalidExponent { message: String },
 }
 
 impl fmt::Display for NumberError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             NumberError::Parsing { value } => write!(f, "Error parsing value : {value}"),
+            NumberError::InvalidExponent { message } => write!(f, "{message}"),
         }
     }
 }

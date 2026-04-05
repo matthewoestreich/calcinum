@@ -1,11 +1,9 @@
 mod number;
 mod shunting_yard;
-pub(crate) mod value;
 
 pub use bigdecimal::BigDecimal;
 pub use num_bigint::BigInt;
-pub use number::Number;
-pub use value::{Value, error::ValueError};
+pub use number::{Number, NumberError, NumberOrder};
 
 use bigdecimal::ParseBigDecimalError;
 use std::{error, fmt};
@@ -19,25 +17,30 @@ pub enum CalculatorError {
     ParseBigDecimal(ParseBigDecimalError),
     EmptyExpression,
     InvalidExpression,
-    ValueError(ValueError),
+    InvalidExponent { exponent_str: String },
+    NumberError(NumberError),
 }
 
 impl fmt::Display for CalculatorError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            CalculatorError::InvalidExponent { exponent_str } => write!(
+                f,
+                "exponent : {exponent_str} : is either Number::Decimal(x) or is unable to be represented by an i64 (eg. it is a float, etc..)"
+            ),
             CalculatorError::ParseBigDecimal(e) => write!(f, "error parsing BigDecimal : {e}"),
             CalculatorError::EmptyExpression => write!(f, "expression cannot be empty"),
             CalculatorError::InvalidExpression => {
                 write!(f, "you may be missing a parenthesis or number somewhere")
             }
-            CalculatorError::ValueError(ve) => write!(f, "value error : {ve}"),
+            CalculatorError::NumberError(ne) => write!(f, "{ne}"),
         }
     }
 }
 
-impl From<ValueError> for CalculatorError {
-    fn from(error: ValueError) -> Self {
-        Self::ValueError(error)
+impl From<NumberError> for CalculatorError {
+    fn from(error: NumberError) -> Self {
+        Self::NumberError(error)
     }
 }
 

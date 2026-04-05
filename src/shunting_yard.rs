@@ -4,7 +4,18 @@ use num_bigint::BigInt;
 use regex::Regex;
 use std::str::FromStr;
 
-// Shunting-Yard algorithm.
+/// Shunting-Yard algorithm.
+/// Expects an infix string, which we convert to reverse polish notation and evaluate.
+/// Examples:
+/// |-------------------|---------------------|
+/// |  infix (regular)  |        rpn          |
+/// |-------------------|---------------------|
+/// | 3 + 4             | 3 4 +               |
+/// | (5 + 6) * 3       | 5 6 + 3 *           |
+/// | (4 + 8)(1 + 3)    | 4 8 + 1 3 + /       |
+/// | (2 / 4) * (5 - 6) | 2 4 / 5 6 - *       |
+/// | 2 ^ 3             | 2 3 ^               |
+/// |-------------------|---------------------|
 pub fn parse(infix: &str) -> Result<Number, CalculatorError> {
     let mut output = vec![];
     let mut stack = vec![];
@@ -59,11 +70,9 @@ fn eval_rpn(rpn: &str) -> Result<Number, CalculatorError> {
 
     let rpn = rpn.trim();
     let rpn_tokens: Vec<_> = rpn.split_whitespace().collect();
-    println!("rpn_tokens = {rpn_tokens:?}");
     let mut stack = vec![];
 
     for token in rpn_tokens {
-        println!("eval token : {token:?}");
         if let Ok(v) = Number::from_str(token) {
             stack.push(v);
             continue;
@@ -74,29 +83,17 @@ fn eval_rpn(rpn: &str) -> Result<Number, CalculatorError> {
         let a = stack.pop().ok_or(CalculatorError::InvalidExpression)?;
 
         match token {
-            "+" => {
-                let result = &a + &b;
-                println!("add : a = {a:?} + b = {b:?} = {result:?}");
+            "+" => stack.push(&a + &b),
+            "-" => stack.push(&a - &b),
+            "*" | "x" => stack.push(&a * &b),
+            "/" => stack.push(&a / &b),
+            "^" => {
+                let result = a.pow(b.to_i64().ok_or(CalculatorError::InvalidExponent {
+                    exponent_str: b.to_string(),
+                })?)?;
                 stack.push(result);
             }
-            "-" => {
-                let result = &a - &b;
-                println!("sub : a = {a:?} - b = {b:?} = {result:?}");
-                stack.push(result);
-            }
-            "*" | "x" => {
-                let result = &a * &b;
-                println!("mul : a = {a:?} * b = {b:?} = {result:?}");
-                stack.push(result);
-            }
-            "/" => {
-                let result = &a / &b;
-                println!("div : a = {a:?} / b = {b:?} = {result:?}");
-                stack.push(result);
-            }
-
-            "^" => todo!(), //stack.push(a.pow(2)),
-            _ => {}
+            _ => return Err(CalculatorError::InvalidExpression),
         };
     }
 
@@ -132,7 +129,7 @@ mod test {
         let result = parse(expression).unwrap();
         assert_eq!(
             result, expected,
-            "expression = {expression:?} : expected {expected:?} got {result:?}"
+            "expression = {expression} : expected {expected} got {result}"
         );
 
         let expression = "3.1 + 2";
@@ -140,8 +137,17 @@ mod test {
         let result = parse(expression).unwrap();
         assert_eq!(
             result, expected,
-            "expression = {expression:?} : expected {expected:?} got {result:?}"
+            "expression = {expression} : expected {expected} got {result}"
         );
+    }
+
+    #[test]
+    fn dec_leading_zero() {
+        let i = "1 / 2";
+        let e = Number::from_f64(0.5).unwrap();
+        let r = parse(i).unwrap();
+        println!("{r}");
+        assert_eq!(r, e, "expected {e} got {r}");
     }
 
     #[test]
@@ -149,10 +155,19 @@ mod test {
         // Tests return when it should be a Float
         let expression = "2 / (1 - 56)";
         let expected = Number::from_f64(-0.03636363636).unwrap();
-        let result = parse(expression).unwrap();
+        let mut result = parse(expression).unwrap();
+        result.set_scale(11);
         assert_eq!(
             result, expected,
-            "expression = {expression:?} : expected {expected:?} got {result:?}"
+            "expression = {expression} : expected {expected} got {result}"
         );
+    }
+
+    #[test]
+    fn pow() {
+        let i = "2 ^ 3";
+        let e = Number::Int(8.into());
+        let r = parse(i).unwrap();
+        assert_eq!(r, e, "expected {e} got {r}");
     }
 }
