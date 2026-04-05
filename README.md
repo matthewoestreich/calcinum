@@ -91,7 +91,7 @@ Append infix expression to current infix expression.
 
 ```rust
 let mut c = Calculator::new();
-c.expression("(1+1)")
+c.expression("(1+1)");
 // Appended to current expression; does not replace it.
 c.expression("*2/12-5*99");
 println!(); // "(1+1)*2/12-5*99"
