@@ -1,13 +1,12 @@
+use bigdecimal::{BigDecimal, ParseBigDecimalError};
 use core::fmt;
+use num_bigint::BigInt;
 use std::{
     cmp::Ordering,
     error,
     ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Rem, RemAssign, Sub, SubAssign},
     str::FromStr,
 };
-
-use bigdecimal::{BigDecimal, ParseBigDecimalError};
-use num_bigint::BigInt;
 
 #[derive(Debug, Clone)]
 pub enum Number {
