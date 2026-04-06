@@ -3,11 +3,12 @@ mod shunting_yard;
 
 pub use bigdecimal::BigDecimal;
 pub use num_bigint::BigInt;
-pub use number::{Number, NumberError, NumberOrder};
+pub use number::{Number, NumberError, NumberOrder, ToNumber};
 
 use bigdecimal::ParseBigDecimalError;
 use std::{error, fmt};
 
+/// Evaluates infix expression.
 pub fn parse_expression(expression: &str) -> Result<Number, CalculatorError> {
     shunting_yard::parse(expression)
 }
@@ -37,6 +38,7 @@ impl Calculator {
         String::from(self.infix.clone().trim())
     }
 
+    /// Add digit to infix expression.
     pub fn press(&mut self, key: Key) {
         self.infix = format!("{}{key}", self.infix);
     }
@@ -157,22 +159,13 @@ impl From<ParseBigDecimalError> for CalculatorError {
 
 impl error::Error for CalculatorError {}
 
+// ===========================================================================================
+// ========================== Tests ==========================================================
+// ===========================================================================================
+
 #[cfg(test)]
 mod test {
     use super::*;
-
-    #[test]
-    fn readme() {
-        let mut c = Calculator::new();
-        c.press(Key::ParenthesisOpen);
-        c.press(Key::Two);
-        c.press(Key::Add);
-        c.expression("8)/2");
-        // View current infix
-        println!("{}", c.infix()); // "(2+8)/2"
-        let result = c.calculate().unwrap();
-        println!("{result:?}"); // Number::Int(5)
-    }
 
     #[test]
     fn strictly_press() {
