@@ -218,19 +218,13 @@ impl FromStr for Number {
     type Err = NumberError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if s.contains(".") {
-            return s
-                .parse::<BigDecimal>()
+        s.parse::<BigInt>().map(Self::Int).or_else(|_| {
+            s.parse::<BigDecimal>()
                 .map(Self::Decimal)
                 .map_err(|_| NumberError::Parsing {
                     value: s.to_string(),
-                });
-        }
-        s.parse::<BigInt>()
-            .map(Self::Int)
-            .map_err(|_| NumberError::Parsing {
-                value: s.to_string(),
-            })
+                })
+        })
     }
 }
 
@@ -591,7 +585,12 @@ mod test {
     #[test]
     fn from_str() {
         let a = Number::from_str("1.1").unwrap();
-        assert_eq!(a.order(), NumberOrder::Decimal);
+        let ea = 1.1.to_number();
+        assert_eq!(a, ea, "expected {ea:?} got {a:?}");
+
+        let b = Number::from_str("1").unwrap();
+        let eb = 1.to_number();
+        assert_eq!(b, eb, "expected {eb:?} got {b:?}");
     }
 
     #[test]
