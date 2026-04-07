@@ -1,6 +1,6 @@
 use bigdecimal::{BigDecimal, ParseBigDecimalError};
 use core::fmt;
-use num_bigint::{BigInt, Sign};
+use num_bigint::{BigInt, Sign, ToBigInt};
 use num_traits::ToPrimitive;
 use std::{
     cmp::Ordering,
@@ -84,10 +84,29 @@ impl Number {
         }
     }
 
+    /// Converts `Number::Decimal` to `Number::Int`.
+    /// IMPORTANT : this may cause loss of data/precision!
+    pub fn demote(&mut self) {
+        if let Some(ref mut d) = self.take_decimal() {
+            let (d, _) = d.with_scale(0).into_bigint_and_scale();
+            *self = Self::Int(d);
+        }
+    }
+
     /// Takes the backing BigInt leaivng 0 in it's place.
+    /// Returns None if variant isn't Number::Int
     pub fn take_int(&mut self) -> Option<BigInt> {
         if let Self::Int(n) = self {
             return Some(std::mem::take(n));
+        }
+        None
+    }
+
+    /// Takes the backing BigDecimal leaving 0 in it's place.
+    /// Returns None if variant isn't Number::Decimal
+    pub fn take_decimal(&mut self) -> Option<BigDecimal> {
+        if let Self::Decimal(d) = self {
+            return Some(std::mem::take(d));
         }
         None
     }
@@ -304,22 +323,49 @@ macro_rules! match_arithmetic_assign {
 /// Expects `$lhs` to be `&Number`
 /// Expects `$rhs` to be `&Number`
 /// Expects `$op` to be a bitwise operator (&, |, ^)
+/// IMPORTANT : we can only perform bitwise operations on Number::Int.
+/// IMPORTANT : If either side is Number::Decimal we conver the Decimal
+/// into an integer before calling the bitwise operation, which may result
+/// in unexpected calculations!
 macro_rules! match_bitwise {
     ($lhs:expr, $rhs:expr, $op:tt) => {
         match ($lhs, $rhs) {
             (Number::Int(x), Number::Int(y)) => Number::Int(x $op y),
             (Number::Decimal(x), Number::Decimal(y)) => {
-                let x = bigdecimal_to_bigint(x);
-                let y = bigdecimal_to_bigint(y);
+                let x = x.to_bigint().expect("BigInt");
+                let y = y.to_bigint().expect("BigInt");
                 Number::Int(x $op y)
             }
             (Number::Int(x), Number::Decimal(y)) => {
-                let y = bigdecimal_to_bigint(y);
+                let y = y.to_bigint().expect("BigInt");
                 Number::Int(x $op y)
             }
             (Number::Decimal(x), Number::Int(y)) => {
-                let x = bigdecimal_to_bigint(x);
+                let x = x.to_bigint().expect("BigInt");
                 Number::Int(x $op y)
+            }
+        }
+    };
+}
+
+/// Expects `$lhs` to be `&mut Number`
+/// Expects `$rhs` to be `&Number`
+/// Expects `$op` to be a bitwise operator (&, |, ^)
+/// IMPORTANT : we can only perform bitwise operations on Number::Int.
+/// IMPORTANT : If either side is Number::Decimal we convert the Decimal
+/// into an integer before calling the bitwise operation, which may result
+/// in unexpected calculations!
+macro_rules! match_bitwise_assign {
+    ($lhs:expr, $rhs:expr, $op:tt) => {
+        *$lhs = match (&$lhs, $rhs) {
+            (Number::Int(x), Number::Int(y)) => Number::Int(x $op y),
+            (Number::Int(x), Number::Decimal(y)) => {
+                let y = y.to_bigint().expect("BigInt");
+                Number::Int(x $op y)
+            }
+            _ => {
+                $lhs.demote();
+                &*$lhs $op $rhs
             }
         }
     };
@@ -339,7 +385,7 @@ macro_rules! match_shift {
                 Number::from(x $op y)
             }
             (Number::Decimal(x), Number::Decimal(y)) => {
-                let x = bigdecimal_to_bigint(x);
+                let x = x.to_bigint().expect("BigInt");
                 let y = bigdecimal_to_i128_saturating(y);
                 Number::from(x $op y)
             }
@@ -348,9 +394,34 @@ macro_rules! match_shift {
                 Number::from(x $op y)
             }
             (Number::Decimal(x), Number::Int(y)) => {
-                let x = bigdecimal_to_bigint(x);
+                let x = x.to_bigint().expect("BigInt");
                 let y = bigint_to_i128_saturating(y);
                 Number::from(x $op y)
+            }
+        }
+    };
+}
+
+/// Expects `$lhs` to be `&mut Number`
+/// Expects `$rhs` to be `&Number`
+/// Expects `$op` to be a bitwise shift (<< | >>)
+/// IMPORTANT : If $lhs is `Number::Deimal` variant, we demote it to `Number::Int`.
+/// IMPORTANT : We can only right shift by numbers that fit within an i128! If your right
+/// hand side does not it within an i128 it will be satured, which may result in data loss!
+macro_rules! match_shift_assign {
+    ($lhs:expr, $rhs:expr, $op:tt) => {
+        *$lhs = match (&$lhs, $rhs) {
+            (Number::Int(x), Number::Int(y)) => {
+                let y = bigint_to_i128_saturating(y);
+                Number::from(x $op y)
+            }
+            (Number::Int(x), Number::Decimal(y)) => {
+                let y = bigdecimal_to_i128_saturating(y);
+                Number::from(x $op y)
+            }
+            _ => {
+                $lhs.demote();
+                &*$lhs $op $rhs
             }
         }
     };
@@ -560,25 +631,24 @@ impl Rem<&Number> for &Number {
 // ===========================================================================================
 // ========================== BitAndAssign/BitAnd ============================================
 // ===========================================================================================
+//
+// IMPORTANT : we can only perform bitwise operations on Number::Int.
+// IMPORTANT : If either side is Number::Decimal we convert the Decimal into an integer before
+// calling the bitwise operation, which may result in unexpected calculations!
+//
 
-/// IMPORTANT : If either side is `Number::Deimal` variant, we demote it to `Number::Int` which
-/// may result in data loss!!
 impl BitAndAssign<Number> for Number {
     fn bitand_assign(&mut self, rhs: Number) {
         self.bitand_assign(&rhs);
     }
 }
 
-/// IMPORTANT : If either side is `Number::Deimal` variant, we demote it to `Number::Int` which
-/// may result in data loss!!
 impl BitAndAssign<&Number> for Number {
     fn bitand_assign(&mut self, rhs: &Number) {
-        *self = match_bitwise!(&self, rhs, &);
+        match_bitwise_assign!(self, rhs, &);
     }
 }
 
-/// IMPORTANT : If either side is `Number::Deimal` variant, we demote it to `Number::Int` which
-/// may result in data loss!!
 impl BitAnd<Number> for Number {
     type Output = Number;
 
@@ -588,8 +658,6 @@ impl BitAnd<Number> for Number {
     }
 }
 
-/// IMPORTANT : If either side is `Number::Deimal` variant, we demote it to `Number::Int` which
-/// may result in data loss!!
 impl BitAnd<&Number> for &Number {
     type Output = Number;
 
@@ -601,25 +669,24 @@ impl BitAnd<&Number> for &Number {
 // ===========================================================================================
 // ========================== BitOrAssign/BitOr ==============================================
 // ===========================================================================================
+//
+// IMPORTANT : we can only perform bitwise operations on Number::Int.
+// IMPORTANT : If either side is Number::Decimal we convert the Decimal into an integer before
+// calling the bitwise operation, which may result in unexpected calculations!
+//
 
-/// IMPORTANT : If either side is `Number::Deimal` variant, we demote it to `Number::Int` which
-/// may result in data loss!!
 impl BitOrAssign<Number> for Number {
     fn bitor_assign(&mut self, rhs: Number) {
         self.bitor_assign(&rhs);
     }
 }
 
-/// IMPORTANT : If either side is `Number::Deimal` variant, we demote it to `Number::Int` which
-/// may result in data loss!!
 impl BitOrAssign<&Number> for Number {
     fn bitor_assign(&mut self, rhs: &Number) {
-        *self = match_bitwise!(&self, rhs, |);
+        match_bitwise_assign!(self, rhs, |);
     }
 }
 
-/// IMPORTANT : If either side is `Number::Deimal` variant, we demote it to `Number::Int` which
-/// may result in data loss!!
 impl BitOr<Number> for Number {
     type Output = Number;
 
@@ -629,8 +696,6 @@ impl BitOr<Number> for Number {
     }
 }
 
-/// IMPORTANT : If either side is `Number::Deimal` variant, we demote it to `Number::Int` which
-/// may result in data loss!!
 impl BitOr<&Number> for &Number {
     type Output = Number;
 
@@ -642,25 +707,24 @@ impl BitOr<&Number> for &Number {
 // ===========================================================================================
 // ========================== BitXorAssign/BitXor ============================================
 // ===========================================================================================
+//
+// IMPORTANT : we can only perform bitwise operations on Number::Int.
+// IMPORTANT : If either side is Number::Decimal we convert the Decimal into an integer before
+// calling the bitwise operation, which may result in unexpected calculations!
+//
 
-/// IMPORTANT : If either side is `Number::Deimal` variant, we demote it to `Number::Int` which
-/// may result in data loss!!
 impl BitXorAssign<Number> for Number {
     fn bitxor_assign(&mut self, rhs: Number) {
         self.bitxor_assign(&rhs);
     }
 }
 
-/// IMPORTANT : If either side is `Number::Deimal` variant, we demote it to `Number::Int` which
-/// may result in data loss!!
 impl BitXorAssign<&Number> for Number {
     fn bitxor_assign(&mut self, rhs: &Number) {
-        *self = match_bitwise!(&self, rhs, ^);
+        match_bitwise_assign!(self, rhs, ^);
     }
 }
 
-/// IMPORTANT : If either side is `Number::Deimal` variant, we demote it to `Number::Int` which
-/// may result in data loss!!
 impl BitXor<Number> for Number {
     type Output = Number;
 
@@ -670,8 +734,6 @@ impl BitXor<Number> for Number {
     }
 }
 
-/// IMPORTANT : If either side is `Number::Deimal` variant, we demote it to `Number::Int` which
-/// may result in data loss!!
 impl BitXor<&Number> for &Number {
     type Output = Number;
 
@@ -683,28 +745,23 @@ impl BitXor<&Number> for &Number {
 // ===========================================================================================
 // ========================== ShlAssign/Shl ==================================================
 // ===========================================================================================
+//
+// IMPORTANT : We can only left shift by numbers that fit within an i128! If your right
+// hand side does not fit within an i128 it will be satured, which may result in data loss!
+//
 
-/// IMPORTANT : If either side is `Number::Deimal` variant, we demote it to `Number::Int`.
-/// IMPORTANT : We can only left shift by numbers that fit within an i128! If your right
-/// hand side does not it within an i128 it will be satured, which may result in data loss!
 impl ShlAssign<Number> for Number {
     fn shl_assign(&mut self, rhs: Number) {
         self.shl_assign(&rhs);
     }
 }
 
-/// IMPORTANT : If either side is `Number::Deimal` variant, we demote it to `Number::Int`.
-/// IMPORTANT : We can only left shift by numbers that fit within an i128! If your right
-/// hand side does not it within an i128 it will be satured, which may result in data loss!
 impl ShlAssign<&Number> for Number {
     fn shl_assign(&mut self, rhs: &Number) {
-        *self = match_shift!(&self, rhs, <<);
+        match_shift_assign!(self, rhs, <<);
     }
 }
 
-/// IMPORTANT : If either side is `Number::Deimal` variant, we demote it to `Number::Int`.
-/// IMPORTANT : We can only left shift by numbers that fit within an i128! If your right
-/// hand side does not it within an i128 it will be satured, which may result in data loss!
 impl Shl<Number> for Number {
     type Output = Number;
 
@@ -714,9 +771,6 @@ impl Shl<Number> for Number {
     }
 }
 
-/// IMPORTANT : If either side is `Number::Deimal` variant, we demote it to `Number::Int`.
-/// IMPORTANT : We can only left shift by numbers that fit within an i128! If your right
-/// hand side does not it within an i128 it will be satured, which may result in data loss!
 impl Shl<&Number> for &Number {
     type Output = Number;
 
@@ -728,28 +782,23 @@ impl Shl<&Number> for &Number {
 // ===========================================================================================
 // ========================== ShrAssign/Shr ==================================================
 // ===========================================================================================
+//
+// IMPORTANT : We can only right shift by numbers that fit within an i128! If your right
+// hand side does not fit within an i128 it will be satured, which may result in data loss!
+//
 
-/// IMPORTANT : If either side is `Number::Deimal` variant, we demote it to `Number::Int`.
-/// IMPORTANT : We can only right shift by numbers that fit within an i128! If your right
-/// hand side does not it within an i128 it will be satured, which may result in data loss!
 impl ShrAssign<Number> for Number {
     fn shr_assign(&mut self, rhs: Number) {
         self.shr_assign(&rhs);
     }
 }
 
-/// IMPORTANT : If either side is `Number::Deimal` variant, we demote it to `Number::Int`.
-/// IMPORTANT : We can only right shift by numbers that fit within an i128! If your right
-/// hand side does not it within an i128 it will be satured, which may result in data loss!
 impl ShrAssign<&Number> for Number {
     fn shr_assign(&mut self, rhs: &Number) {
         *self = match_shift!(&self, rhs, >>);
     }
 }
 
-/// IMPORTANT : If either side is `Number::Deimal` variant, we demote it to `Number::Int`.
-/// IMPORTANT : We can only right shift by numbers that fit within an i128! If your right
-/// hand side does not it within an i128 it will be satured, which may result in data loss!
 impl Shr<Number> for Number {
     type Output = Number;
 
@@ -759,9 +808,6 @@ impl Shr<Number> for Number {
     }
 }
 
-/// IMPORTANT : If either side is `Number::Deimal` variant, we demote it to `Number::Int`.
-/// IMPORTANT : We can only right shift by numbers that fit within an i128! If your right
-/// hand side does not it within an i128 it will be satured, which may result in data loss!
 impl Shr<&Number> for &Number {
     type Output = Number;
 
@@ -865,13 +911,6 @@ fn bigdecimal_to_i128_saturating(x: &BigDecimal) -> i128 {
             i128::MAX
         }
     })
-}
-
-// Returns everything to the left of the decimal.
-fn bigdecimal_to_bigint(x: &BigDecimal) -> BigInt {
-    let bi = x.with_scale(0);
-    let (bi, _) = bi.into_bigint_and_scale();
-    bi
 }
 
 // ===========================================================================================
