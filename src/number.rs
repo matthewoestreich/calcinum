@@ -943,6 +943,17 @@ impl Not for Number {
     }
 }
 
+impl Not for &Number {
+    type Output = Number;
+
+    fn not(self) -> Self::Output {
+        match self {
+            Number::Int(i) => Number::Int(!i),
+            Number::Decimal(d) => Number::Int(!d.to_bigint().expect("BigInt")),
+        }
+    }
+}
+
 // ===========================================================================================
 // ========================== PartialEq/Eq ===================================================
 // ===========================================================================================
@@ -1368,7 +1379,9 @@ mod test {
     fn not(#[case] lhs: &str, #[case] expect: &str) {
         let x = Number::from_str(lhs).unwrap();
         let e = Number::from_str(expect).unwrap();
+        let rr = !&x;
+        assert_eq!(rr, e, "[by ref] expected {e:?}, got {rr:?}");
         let r = !x;
-        assert_eq!(r, e, "expected {e:?} got {r:?}");
+        assert_eq!(r, e, "[by val] expected {e:?} got {r:?}");
     }
 }
