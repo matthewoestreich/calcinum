@@ -1,16 +1,19 @@
 mod number;
-mod shunting_yard;
+mod parser;
 
-pub use bigdecimal::{BigDecimal, RoundingMode};
-pub use num_bigint::BigInt;
+pub use bigdecimal;
+pub use num_bigint;
 pub use number::{Number, NumberError, NumberOrder, ToNumber};
 
-use bigdecimal::ParseBigDecimalError;
+use crate::parser::ParserError;
 use std::{error, fmt};
 
 /// Evaluates infix expression.
-pub fn parse_expression(expression: &str) -> Result<Number, CalculatorError> {
-    shunting_yard::parse(expression)
+pub fn parse_expression(infix_expression: &str) -> Result<Number, CalculatorError> {
+    let tokens = parser::tokenize(infix_expression)?;
+    let rpn_tokens = parser::parse(tokens)?;
+    let result = parser::eval(rpn_tokens)?;
+    Ok(result)
 }
 
 // ===========================================================================================
@@ -52,7 +55,9 @@ impl Calculator {
     /// Calculates constructed infix string.
     /// We set the result to be the new infix, so you can use the result in further calculations.
     pub fn calculate(&mut self) -> Result<Number, CalculatorError> {
-        let result = shunting_yard::parse(self.infix.trim())?;
+        let tokens = parser::tokenize(&self.infix)?;
+        let rpn_tokens = parser::parse(tokens)?;
+        let result = parser::eval(rpn_tokens)?;
         self.infix = result.to_string();
         Ok(result)
     }
@@ -120,40 +125,21 @@ impl fmt::Display for Key {
 // ===========================================================================================
 
 #[derive(Debug, Clone)]
-pub enum CalculatorError {
-    ParseBigDecimal(ParseBigDecimalError),
-    EmptyExpression,
-    InvalidExpression,
-    InvalidExponent { exponent_str: String },
-    NumberError(NumberError),
+pub struct CalculatorError {
+    message: String,
 }
 
 impl fmt::Display for CalculatorError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            CalculatorError::InvalidExponent { exponent_str } => write!(
-                f,
-                "exponent : {exponent_str} : is either Number::Decimal(x) or is unable to be represented by an i64 (eg. it is a float, etc..)"
-            ),
-            CalculatorError::ParseBigDecimal(e) => write!(f, "error parsing BigDecimal : {e}"),
-            CalculatorError::EmptyExpression => write!(f, "expression cannot be empty"),
-            CalculatorError::InvalidExpression => {
-                write!(f, "you may be missing a parenthesis or number somewhere")
-            }
-            CalculatorError::NumberError(ne) => write!(f, "{ne}"),
+        write!(f, "CalculatorError {}", self.message)
+    }
+}
+
+impl From<ParserError> for CalculatorError {
+    fn from(error: ParserError) -> Self {
+        Self {
+            message: format!("{error}").to_string(),
         }
-    }
-}
-
-impl From<NumberError> for CalculatorError {
-    fn from(error: NumberError) -> Self {
-        Self::NumberError(error)
-    }
-}
-
-impl From<ParseBigDecimalError> for CalculatorError {
-    fn from(value: ParseBigDecimalError) -> Self {
-        Self::ParseBigDecimal(value)
     }
 }
 

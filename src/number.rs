@@ -8,7 +8,7 @@ use std::{
     fmt::Binary,
     ops::{
         Add, AddAssign, BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Div,
-        DivAssign, Mul, MulAssign, Not, Rem, RemAssign, Shl, ShlAssign, Shr, ShrAssign, Sub,
+        DivAssign, Mul, MulAssign, Neg, Not, Rem, RemAssign, Shl, ShlAssign, Shr, ShrAssign, Sub,
         SubAssign,
     },
     str::FromStr,
@@ -29,6 +29,17 @@ impl Number {
         match self {
             Number::Int(i) => i.to_i64(),
             Number::Decimal(d) => d.to_i64(),
+        }
+    }
+
+    /// If `self` is `Number::Decimal` calling this method may result in data loss!
+    /// This is due to how decimal to integer conversion works.
+    /// IMPORTANT: if your number does not fit into an `i64`, it will be saturated,
+    /// eg. clamped to `i64` bounds, which may result in data loss!
+    pub fn to_i64_saturating(&self) -> i64 {
+        match self {
+            Number::Int(i) => Self::saturating_i64(i),
+            Number::Decimal(d) => Self::saturating_i64(d),
         }
     }
 
@@ -165,6 +176,22 @@ impl Number {
                 i128::MIN
             } else {
                 i128::MAX
+            }
+        })
+    }
+
+    /// If the underlying value for `T` does not fit within an
+    /// `i64`, we truncate it to fit within `i64` bounds, which
+    /// may result in data/precision/scale loss!
+    fn saturating_i64<T>(x: &T) -> i64
+    where
+        T: ToPrimitive + Signed,
+    {
+        x.to_i64().unwrap_or_else(|| {
+            if x.signum().is_negative() {
+                i64::MIN
+            } else {
+                i64::MAX
             }
         })
     }
@@ -960,6 +987,32 @@ impl Not for &Number {
 }
 
 // ===========================================================================================
+// ========================== Neg ============================================================
+// ===========================================================================================
+
+impl Neg for Number {
+    type Output = Number;
+
+    fn neg(self) -> Self::Output {
+        match self {
+            Number::Int(i) => Number::Int(-i),
+            Number::Decimal(d) => Number::Decimal(-d),
+        }
+    }
+}
+
+impl Neg for &Number {
+    type Output = Number;
+
+    fn neg(self) -> Self::Output {
+        match self {
+            Number::Int(i) => Number::Int(-i),
+            Number::Decimal(d) => Number::Decimal(-d),
+        }
+    }
+}
+
+// ===========================================================================================
 // ========================== PartialEq/Eq ===================================================
 // ===========================================================================================
 
@@ -1186,7 +1239,7 @@ mod test {
         let y = Number::from_str(rhs).unwrap();
         let e = Number::from_str(expect).unwrap();
         let mut r = x / y;
-        r.set_scale_round(11, RoundingMode::HalfUp);
+        r.set_scale_round(11, bigdecimal::RoundingMode::HalfUp);
         assert_eq!(r, e, "expected {e:?} got {r:?}");
     }
 
@@ -1202,7 +1255,7 @@ mod test {
         let y = Number::from_str(rhs).unwrap();
         let e = Number::from_str(expect).unwrap();
         x /= y;
-        x.set_scale_round(11, RoundingMode::HalfUp);
+        x.set_scale_round(11, bigdecimal::RoundingMode::HalfUp);
         assert_eq!(x, e, "expected {e:?} got {x:?}");
     }
 
@@ -1396,5 +1449,15 @@ mod test {
         assert_eq!(rr, e, "[by ref] expected {e:?}, got {rr:?}");
         let r = !x;
         assert_eq!(r, e, "[by val] expected {e:?} got {r:?}");
+    }
+
+    #[rstest]
+    #[case::neg1("55", "-55")]
+    #[case::neg2("55.55", "-55.55")]
+    fn neg(#[case] number: &str, #[case] expect: &str) {
+        let n = Number::from_str(number).unwrap();
+        let e = Number::from_str(expect).unwrap();
+        let r = -n;
+        assert_eq!(r, e, "expected {e:?} got {r:?}");
     }
 }

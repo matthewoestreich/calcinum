@@ -4,7 +4,35 @@ Calculator capable of handling arbitrarily large numbers, trading speed for prec
 
 Parses infix string via the [shunting yard](https://en.wikipedia.org/wiki/Shunting_yard_algorithm) algorithm, which is then evaluated and returned as custom `Number` type.
 
-# Usage
+# Order of Operations
+
+- We use `C`/`Rust`-style operator precedence, with added support for exponentiation (`**`).
+- Parentheses (`(`, `)`) are considered control tokens and do not participate in precedence.
+- Arithmetic operators (`+`, `-` <small>(subtraction)</small>, `*`, `/`, `%`, `**`, `-` <small>(negation)</small>) preserve decimal values.
+  - e.g., `1 / 2 = 0.5`
+- Bitwise operators (`&`, `|`, `^`, `<<`, `>>`, `!`) operate on integers.
+  - Operands are coerced to integers before the operation.
+  - e.g., `2.2 << 2 = 8` (coerced into `2 << 2`)
+
+# Operators
+
+| Operator | Operation      | Arity  | Precedence | Associativity |
+| -------- | -------------- | ------ | ---------- | ------------- |
+| `-`      | Negation       | Unary  | 8          | Right         |
+| `!`      | Bitwise NOT    | Unary  | 8          | Right         |
+| `**`     | Exponentiation | Binary | 7          | Right         |
+| `*`      | Multiplication | Binary | 6          | Left          |
+| `/`      | Division       | Binary | 6          | Left          |
+| `%`      | Remainder      | Binary | 6          | Left          |
+| `+`      | Addition       | Binary | 5          | Left          |
+| `-`      | Subtraction    | Binary | 5          | Left          |
+| `<<`     | Shift Left     | Binary | 4          | Left          |
+| `>>`     | Shift Right    | Binary | 4          | Left          |
+| `&`      | Bitwise AND    | Binary | 3          | Left          |
+| `^`      | Bitwise XOR    | Binary | 2          | Left          |
+| `\|`     | Bitwise OR     | Binary | 1          | Left          |
+
+# Library Usage
 
 You can either work with the exposed `Number` enum directly, or use the `Calculator` struct. We recommend using the `Calculator` since it handles order of operations natively.
 
