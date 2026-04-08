@@ -8,7 +8,7 @@ Parses infix string via the [shunting yard](https://en.wikipedia.org/wiki/Shunti
 
 - We use `C`/`Rust`-style operator precedence, with added support for exponentiation (`**`).
 - Parentheses (`(`, `)`) are considered control tokens and do not participate in precedence.
-- Arithmetic operators (`+`, `-` <small>(subtraction)</small>, `*`, `/`, `%`, `**`, `-` <small>(negation)</small>) preserve decimal values.
+- Arithmetic operators (`+`, `-` <sub>(subtraction)</sub>, `*`, `/`, `%`, `**`, `-` <sub>(negation)</sub>) preserve decimal values.
   - e.g., `1 / 2 = 0.5`
 - Bitwise operators (`&`, `|`, `^`, `<<`, `>>`, `!`) operate on integers.
   - Operands are coerced to integers before the operation.
