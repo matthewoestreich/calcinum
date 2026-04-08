@@ -428,6 +428,7 @@ mod test {
         "3 NEG NOT 4 5 6 SUB MUL 7 DIV 2 3 EXP REM ADD 1 SHL 2 SHR 3 AND 4 XOR 5 OR"
     )]
     #[case::parsing10("1/2", "1 2 DIV")]
+    #[case::parsing_starts_with_dec(".5 + .5", "0.5 0.5 ADD")]
     fn parsing(#[case] raw_infix: &str, #[case] expect_rpn: &str) {
         let tokens = match tokenize(raw_infix) {
             Ok(t) => t,
@@ -461,6 +462,7 @@ mod test {
         "!-3 + 4 * (5 - 6) / 7 % 2 ** 3 << 1 >> 2 & 3 ^ 4 | 5",
         "5"
     )]
+    #[case::evaluate_starts_with_dec(".5 + .5", "1.0")]
     fn evaluate(#[case] raw_infix: &str, #[case] expect: &str) {
         let tokens = match tokenize(raw_infix) {
             Ok(t) => t,
