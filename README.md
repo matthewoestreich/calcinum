@@ -51,9 +51,13 @@ For example: `abs(1 + ceil(100 / 33) - (12 +13)) / 2`
 
 # CLI Usage
 
-The CLI accepts a single unnamed argument, which must be a valid infix expression formatted as a string. Meaning, the expression must be surrounded by single or double quotes - **we recommend single quotes**.
+Except for `--version` and `-v` (which display the current version), the CLI accepts a single unnamed argument: a valid infix expression provided as a string. The expression must be enclosed in single or double quotes — **single quotes are recommended**.
 
 ```
+$ calcinum --version
+x.x.x
+$ calcinum -v
+x.x.x
 $ calcinum '2 + 2'
 4
 $ calcinum '2 + (10 / 5)'
