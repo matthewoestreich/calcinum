@@ -303,11 +303,9 @@ pub fn parse(infix_tokens: Vec<Token>) -> Result<Vec<Token>, ParserError> {
             Token::Operator(_) => {
                 let token_precedence = token.precedence();
 
-                while let Some(top) = stack.last() {
-                    if matches!(top, Token::ParenthesesOpen) {
-                        break;
-                    }
-
+                while let Some(top) = stack.last()
+                    && !matches!(top, Token::ParenthesesOpen)
+                {
                     let top_precedence = top.precedence();
                     if match token.associativity() {
                         Associativity::Left => token_precedence > top_precedence,
