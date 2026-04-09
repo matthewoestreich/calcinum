@@ -68,26 +68,6 @@ impl Number {
         }
     }
 
-    pub fn pow(&self, exponent: i64) -> Result<Self, NumberError> {
-        match self {
-            Number::Decimal(d) => Ok(Number::Decimal(d.powi(exponent))),
-            Number::Int(i) => {
-                let exponent_u32: u32 = exponent.try_into().map_err(|_| {
-                    let m = format!("Number::Int exponent must fit in u32: {exponent} does not!");
-                    NumberError::InvalidExponent { message: m }
-                })?;
-                Ok(Number::Int(i.pow(exponent_u32)))
-            }
-        }
-    }
-
-    pub fn abs(&self) -> Self {
-        match self {
-            Number::Int(i) => Number::Int(i.abs()),
-            Number::Decimal(d) => Number::Decimal(d.abs()),
-        }
-    }
-
     /// Sets the scale only on Number::Decimal
     pub fn set_scale(&mut self, scale: i64) {
         if let Self::Decimal(n) = self {
@@ -170,6 +150,63 @@ impl Number {
             }
         }
     }
+
+    // ===========================================================================================
+    // ========================== Mathematical Functions =========================================
+    // ===========================================================================================
+
+    pub fn pow(&self, exponent: i64) -> Result<Self, NumberError> {
+        match self {
+            Number::Decimal(d) => Ok(Number::Decimal(d.powi(exponent))),
+            Number::Int(i) => {
+                let exponent_u32: u32 = exponent.try_into().map_err(|_| {
+                    let m = format!("Number::Int exponent must fit in u32: {exponent} does not!");
+                    NumberError::InvalidExponent { message: m }
+                })?;
+                Ok(Number::Int(i.pow(exponent_u32)))
+            }
+        }
+    }
+
+    /// The distance of a number from zero on a number line, regardless of direction.
+    /// As a distance, it is always non-negative, effectively turning negative numbers
+    /// positive and leaving positive numbers (and zero) unchanged.
+    pub fn abs(&self) -> Self {
+        match self {
+            Number::Int(i) => Number::Int(i.abs()),
+            Number::Decimal(d) => Number::Decimal(d.abs()),
+        }
+    }
+
+    /// Variant is not coerced. If you call `.ceil()` with variant `Number::Int`,
+    /// we just clone it and return it. If you call `.ceil()` on variant `Number::Decimal`,
+    /// even though the result is a whole number, we keep it as a `Number::Decimal`.
+    pub fn ceil(&self) -> Self {
+        match self {
+            Number::Int(_) => self.clone(),
+            Number::Decimal(d) => {
+                let bd = d.with_scale_round(0, bigdecimal::RoundingMode::Ceiling);
+                Number::Decimal(bd)
+            }
+        }
+    }
+
+    /// Variant is not coerced. If you call `.floor()` with variant `Number::Int`,
+    /// we just clone it and return it. If you call `.floor()` on variant `Number::Decimal`,
+    /// even though the result is a whole number, we keep it as a `Number::Decimal`.
+    pub fn floor(&self) -> Self {
+        match self {
+            Number::Int(_) => self.clone(),
+            Number::Decimal(d) => {
+                let bd = d.with_scale_round(0, bigdecimal::RoundingMode::Floor);
+                Number::Decimal(bd)
+            }
+        }
+    }
+
+    // ===========================================================================================
+    // ========================== Static Methods =================================================
+    // ===========================================================================================
 
     /// If the underlying value for `T` does not fit within an
     /// `i128`, we truncate it to fit within `i128` bounds, which
@@ -1465,6 +1502,69 @@ mod test {
         let n = Number::from_str(number).unwrap();
         let e = Number::from_str(expect).unwrap();
         let r = -n;
+        assert_eq!(r, e, "expected {e:?} got {r:?}");
+    }
+
+    #[rstest]
+    #[case::abs1("10", "10")]
+    #[case::abs2("-10", "10")]
+    #[case::abs3("0", "0")]
+    fn abs(#[case] n: &str, #[case] expect: &str) {
+        let x = n.parse::<Number>().unwrap();
+        let e = expect.parse::<Number>().unwrap();
+        let r = x.abs();
+        assert_eq!(r, e, "expected {e:?} got {r:?}");
+    }
+
+    #[rstest]
+    #[case::ceil1("14.7572", "15")]
+    #[case::ceil2("0.1", "1")]
+    #[case::ceil3("-2.3", "-2")]
+    #[case::ceil4("-0.9", "0")]
+    #[case::ceil5("-7.5", "-7")]
+    #[case::ceil6("5.0", "5")]
+    #[case::ceil7("-4.0", "-4")]
+    #[case::ceil8("0.0", "0")]
+    #[case::ceil9("-0.0", "-0")]
+    #[case::ceil10(
+        "0.0000000000000000000000000000000000000000000000000000000000000000000000001",
+        "1"
+    )]
+    #[case::ceil11(
+        "-0.0000000000000000000000000000000000000000000000000000000000000000000000001",
+        "0"
+    )]
+    fn ceil(#[case] n: &str, #[case] expect: &str) {
+        let x = n.parse::<Number>().unwrap();
+        let bd = expect.parse::<BigDecimal>().unwrap();
+        let e = Number::from(bd);
+        let r = x.ceil();
+        assert_eq!(r, e, "expected {e:?} got {r:?}");
+    }
+
+    #[rstest]
+    #[case::flor1("14.7572", "14")]
+    #[case::flor2("0.1", "0")]
+    #[case::flor3("-2.3", "-3")]
+    #[case::flor4("-0.9", "-1")]
+    #[case::flor5("-7.5", "-8")]
+    #[case::flor6("5.0", "5")]
+    #[case::flor7("-4.0", "-4")]
+    #[case::flor8("0.0", "0")]
+    #[case::flor9("-0.0", "-0")]
+    #[case::floor10(
+        "0.0000000000000000000000000000000000000000000000000000000000000000000000001",
+        "0"
+    )]
+    #[case::floor11(
+        "-0.0000000000000000000000000000000000000000000000000000000000000000000000001",
+        "-1"
+    )]
+    fn floor(#[case] n: &str, #[case] expect: &str) {
+        let x = n.parse::<Number>().unwrap();
+        let bd = expect.parse::<BigDecimal>().unwrap();
+        let e = Number::from(bd);
+        let r = x.floor();
         assert_eq!(r, e, "expected {e:?} got {r:?}");
     }
 }
