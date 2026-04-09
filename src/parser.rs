@@ -82,7 +82,7 @@ impl FromStr for Function {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            s if s == Self::Abs.to_string() => Ok(Self::Abs),
+            "abs" => Ok(Self::Abs),
             _ => Err(ParserError::UnrecognizedFunction {
                 name: s.to_string(),
             }),
