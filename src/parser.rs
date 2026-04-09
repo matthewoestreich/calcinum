@@ -1,6 +1,10 @@
 use crate::{Number, NumberError};
 use bigdecimal::ParseBigDecimalError;
-use std::{error, fmt};
+use std::{error, fmt, str::FromStr};
+
+// ===========================================================================================
+// ========================== Operator =======================================================
+// ===========================================================================================
 
 #[derive(Debug, Clone)]
 pub enum Operator {
@@ -20,6 +24,10 @@ pub enum Operator {
 }
 
 impl Operator {
+    pub fn is_unary(&self) -> bool {
+        matches!(self, Self::Negate | Self::Not)
+    }
+
     /// This method assumes you have already verified the first char!
     /// What you are passing in would be the second char.
     pub fn is_multichar_infix(second_char: &char) -> bool {
@@ -59,23 +67,66 @@ impl fmt::Display for Operator {
     }
 }
 
+// ===========================================================================================
+// ========================== Function =======================================================
+// ===========================================================================================
+
+#[derive(Debug, Clone)]
+pub enum Function {
+    Abs,
+}
+
+impl FromStr for Function {
+    type Err = ParserError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            s if s == Self::Abs.to_string() => Ok(Self::Abs),
+            _ => Err(ParserError::UnrecognizedFunction {
+                name: s.to_string(),
+            }),
+        }
+    }
+}
+
+impl fmt::Display for Function {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // All functions should be lower case!
+        match self {
+            Function::Abs => write!(f, "abs"),
+        }
+    }
+}
+
+// ===========================================================================================
+// ========================== Associativity ==================================================
+// ===========================================================================================
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum Associativity {
     Left,
     Right,
 }
 
+// ===========================================================================================
+// ========================== Token ==========================================================
+// ===========================================================================================
+
 #[derive(Debug, Clone)]
 pub enum Token {
     Number(Number),
     Operator(Operator),
+    Function(Function),
     ParenthesesOpen,
     ParenthesesClose,
 }
 
 impl Token {
     pub fn is_unary(&self) -> bool {
-        matches!(self, Self::Operator(Operator::Negate | Operator::Not))
+        if let Token::Operator(o) = self {
+            return o.is_unary();
+        }
+        false
     }
 
     /// Determines `&Token` associativity.
@@ -93,6 +144,8 @@ impl Token {
     /// We use "C-style" operator precedence.
     pub fn precedence(&self) -> i32 {
         match self {
+            // Functions have the highest priority
+            Token::Function(_) => 100,
             Token::Operator(o) => match o {
                 Operator::Negate | Operator::Not => 8,
                 Operator::Exponentiation => 7,
@@ -112,6 +165,7 @@ impl fmt::Display for Token {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Token::Number(number) => write!(f, "{number}"),
+            Token::Function(func) => write!(f, "{func}"),
             Token::Operator(op_kind) => write!(f, "{op_kind}"),
             Token::ParenthesesOpen => write!(f, "("),
             Token::ParenthesesClose => write!(f, ")"),
@@ -136,16 +190,28 @@ pub fn tokenize(expression: &str) -> Result<Vec<Token>, ParserError> {
             '(' => tokens.push(Token::ParenthesesOpen),
             ')' => tokens.push(Token::ParenthesesClose),
 
+            // If we encounter an ASCII character, it means we have a function.
+            c if c.is_ascii_alphabetic() => {
+                let mut fn_name_str = String::from(c);
+
+                while let Some(&p) = iter.peek()
+                    && p.is_ascii_alphabetic()
+                {
+                    fn_name_str.push(p);
+                    // Move to next char
+                    _ = iter.next();
+                }
+
+                let func = fn_name_str.parse::<Function>()?;
+                tokens.push(Token::Function(func));
+            }
+
             // If 'c' is considered unary given the `tokens`` context.
             '-' | '!' if Operator::is_unary_context(&tokens) => {
                 tokens.push(Token::Operator(match c {
                     '-' => Operator::Negate,
                     '!' => Operator::Not,
-                    _ => {
-                        return Err(ParserError::UnexpectedToken {
-                            expected: "valid unary operator".to_string(),
-                        });
-                    }
+                    _ => return Err(ParserError::UnexpectedChar(c)),
                 }));
             }
 
@@ -159,11 +225,7 @@ pub fn tokenize(expression: &str) -> Result<Vec<Token>, ParserError> {
                         '*' => Operator::Exponentiation,
                         '<' => Operator::ShiftLeft,
                         '>' => Operator::ShiftRight,
-                        _ => {
-                            return Err(ParserError::UnexpectedToken {
-                                expected: "multi-character infix operator".to_string(),
-                            });
-                        }
+                        _ => return Err(ParserError::UnexpectedChar(c)),
                     }));
 
                     // Skip peeked char
@@ -181,11 +243,7 @@ pub fn tokenize(expression: &str) -> Result<Vec<Token>, ParserError> {
                     '&' => Operator::And,
                     '|' => Operator::Or,
                     '^' => Operator::Xor,
-                    _ => {
-                        return Err(ParserError::UnexpectedToken {
-                            expected: "single-character infix operator".to_string(),
-                        });
-                    }
+                    _ => return Err(ParserError::UnexpectedChar(c)),
                 }));
             }
 
@@ -203,7 +261,7 @@ pub fn tokenize(expression: &str) -> Result<Vec<Token>, ParserError> {
 
                 let number = num_str
                     .parse::<Number>()
-                    .map_err(|_| ParserError::InvalidExpression)?;
+                    .map_err(|_| ParserError::InvalidNumber(num_str))?;
 
                 tokens.push(Token::Number(number));
                 continue;
@@ -230,6 +288,7 @@ pub fn parse(infix_tokens: Vec<Token>) -> Result<Vec<Token>, ParserError> {
     for token in infix_tokens {
         match token {
             Token::Number(_) => output.push(token),
+            Token::Function(_) => stack.push(token),
             Token::ParenthesesOpen => stack.push(token),
             Token::ParenthesesClose => {
                 while let Some(t) = stack.pop() {
@@ -237,6 +296,10 @@ pub fn parse(infix_tokens: Vec<Token>) -> Result<Vec<Token>, ParserError> {
                         break;
                     }
                     output.push(t);
+                }
+
+                if matches!(stack.last(), Some(Token::Function(_))) {
+                    output.push(stack.pop().expect("just verified .last"));
                 }
             }
             Token::Operator(_) => {
@@ -288,50 +351,53 @@ pub fn eval(rpn_tokens: Vec<Token>) -> Result<Number, ParserError> {
             continue;
         }
 
-        // Order matters here! 'b' must be popped before 'a'!
-        let b = stack.pop().ok_or(ParserError::InvalidExpression)?;
+        match &token {
+            Token::Function(f) => {
+                let x = stack.pop().ok_or(ParserError::InvalidExpression)?;
 
-        if token.is_unary() {
-            match &token {
-                Token::Operator(Operator::Negate) => stack.push(-b),
-                Token::Operator(Operator::Not) => stack.push(!b),
-                _ => {
-                    return Err(ParserError::UnexpectedToken {
-                        expected: "valid unary operator".to_string(),
+                stack.push(match f {
+                    Function::Abs => x.abs(),
+                });
+            }
+            Token::Operator(o) => {
+                if o.is_unary() {
+                    let x = stack.pop().ok_or(ParserError::InvalidExpression)?;
+
+                    stack.push(match o {
+                        Operator::Negate => -x,
+                        Operator::Not => !x,
+                        _ => return Err(ParserError::ExpectedUnary(token)),
                     });
+                } else {
+                    // Order matters here! 'b' must be popped before 'a'!
+                    let rhs = stack.pop().ok_or(ParserError::InvalidExpression)?;
+                    let lhs = stack.pop().ok_or(ParserError::InvalidExpression)?;
+
+                    stack.push(match o {
+                        Operator::Add => lhs + rhs,
+                        Operator::Subtract => lhs - rhs,
+                        Operator::Multiply => lhs * rhs,
+                        Operator::Divide => lhs / rhs,
+                        Operator::Exponentiation => lhs.pow(rhs.to_i64_saturating())?,
+                        Operator::Remainder => lhs % rhs,
+                        Operator::And => lhs & rhs,
+                        Operator::Or => lhs | rhs,
+                        Operator::Xor => lhs ^ rhs,
+                        Operator::ShiftLeft => lhs << rhs,
+                        Operator::ShiftRight => lhs >> rhs,
+                        _ => unreachable!("unary operators should have been handled already"),
+                    })
                 }
             }
-            continue;
-        }
-
-        // Only pop 'a' if we know 'b' was NOT unary.
-        // Order matters here! 'a' must be popped after 'b'!
-        let a = stack.pop().ok_or(ParserError::InvalidExpression)?;
-
-        match &token {
-            Token::Operator(o) => stack.push(match o {
-                Operator::Add => a + b,
-                Operator::Subtract => a - b,
-                Operator::Multiply => a * b,
-                Operator::Divide => a / b,
-                Operator::Exponentiation => a.pow(b.to_i64_saturating())?,
-                Operator::Remainder => a % b,
-                Operator::And => a & b,
-                Operator::Or => a | b,
-                Operator::Xor => a ^ b,
-                Operator::ShiftLeft => a << b,
-                Operator::ShiftRight => a >> b,
-                // Matches all unary operators, which we already handled above.
-                _ => unreachable!("unary operators should have been handled already"),
-            }),
-            _ => return Err(ParserError::InvalidExpression),
+            _ => return Err(ParserError::ExpectedOperator(token)),
         }
     }
 
-    stack
-        .into_iter()
-        .next()
-        .ok_or(ParserError::InvalidExpression)
+    // There MUST be only one element on the stack here.
+    if stack.len() != 1 {
+        return Err(ParserError::InvalidExpression);
+    }
+    Ok(stack.pop().expect("one stack element"))
 }
 
 // ===========================================================================================
@@ -357,8 +423,20 @@ impl TryFrom<&Token> for Number {
 pub enum ParserError {
     EmptyExpression,
     InvalidExpression,
-    UnexpectedToken { expected: String },
-    InvalidExponent { exponent_str: String },
+    UnrecognizedFunction {
+        name: String,
+    },
+    /// `Token` argument is what you got instead
+    ExpectedUnary(Token),
+    /// `Token` argument is what you got instead
+    ExpectedFunction(Token),
+    /// `Token` argument is what you got instead
+    ExpectedOperator(Token),
+    UnexpectedChar(char),
+    InvalidExponent {
+        exponent_str: String,
+    },
+    InvalidNumber(String),
     NumberErr(NumberError),
     BigDecimalErr(ParseBigDecimalError),
 }
@@ -368,9 +446,18 @@ impl fmt::Display for ParserError {
         match self {
             ParserError::EmptyExpression => write!(f, "expression cannot be empty"),
             ParserError::InvalidExpression => write!(f, "expression is invalid"),
+            ParserError::ExpectedUnary(got) => {
+                write!(f, "expected valid unary operator, got '{got}'")
+            }
+            ParserError::ExpectedFunction(got) => write!(f, "expected function, got '{got}'"),
+            ParserError::ExpectedOperator(got) => write!(f, "expected operator, got '{got}'"),
+            ParserError::UnrecognizedFunction { name } => {
+                write!(f, "function with name '{name}' is not recognized")
+            }
+            ParserError::InvalidNumber(n_str) => write!(f, "invalid number : '{n_str}'"),
             ParserError::BigDecimalErr(e) => write!(f, "error parsing BigDecimal : {e}"),
             ParserError::NumberErr(ne) => write!(f, "{ne}"),
-            ParserError::UnexpectedToken { expected } => write!(f, "{expected}"),
+            ParserError::UnexpectedChar(c) => write!(f, "unexpected char '{c}'"),
             ParserError::InvalidExponent { exponent_str } => write!(
                 f,
                 "{exponent_str} : is either Number::Decimal(x) or is unable to be represented by an i64 (eg. it is a float, etc..)"
@@ -411,6 +498,29 @@ mod test {
     }
 
     #[rstest]
+    // Uses the `Display` impls for `expect_tokens`.
+    #[case::tokenization1("2 + abs((2+2)-10)", "2 ADD abs ( ( 2 ADD 2 ) SUB 10 )")]
+    #[case::tokenization2(
+        "abs( 10 - abs( ( 2 + 2 ) - 10 ) )",
+        "abs ( 10 SUB abs ( ( 2 ADD 2 ) SUB 10 ) )"
+    )]
+    #[case::tokenization3(
+        "-abs( 10 - abs( -( 2 + 2 ) - 10 ) )",
+        "NEG abs ( 10 SUB abs ( NEG ( 2 ADD 2 ) SUB 10 ) )"
+    )]
+    fn tokenization(#[case] raw_infix: &str, #[case] expect_tokens: &str) {
+        let tokens = match tokenize(raw_infix) {
+            Ok(t) => t,
+            Err(e) => panic!("TOKENIZATION ERROR = {e:?}"),
+        };
+        let tokens_str = tokens_to_str(&tokens);
+        assert_eq!(
+            tokens_str, expect_tokens,
+            "expected '{expect_tokens}' got '{tokens_str}'"
+        );
+    }
+
+    #[rstest]
     #[case::parsing1(
         "!-(-3 + 4 * (2 - -5)) ^ 2 << 1 + !-6 * 3 - --7",
         "3 NEG 4 2 5 NEG SUB MUL ADD NEG NOT 2 1 6 NEG NOT 3 MUL ADD 7 NEG NEG SUB SHL XOR"
@@ -429,6 +539,15 @@ mod test {
     )]
     #[case::parsing10("1/2", "1 2 DIV")]
     #[case::parsing_starts_with_dec(".5 + .5", "0.5 0.5 ADD")]
+    #[case::parsing_func("2 + abs((2+2)-10)", "2 2 2 ADD 10 SUB abs ADD")]
+    #[case::parsing_nested_func(
+        "abs( 10 - abs( ( 2 + 2 ) - 10 ) )",
+        "10 2 2 ADD 10 SUB abs SUB abs"
+    )]
+    #[case::parsing_nested_func_with_neg(
+        "-abs( 10 - abs( -( 2 + 2 ) - 10 ) )",
+        "10 2 2 ADD NEG 10 SUB abs SUB abs NEG"
+    )]
     fn parsing(#[case] raw_infix: &str, #[case] expect_rpn: &str) {
         let tokens = match tokenize(raw_infix) {
             Ok(t) => t,
@@ -442,7 +561,7 @@ mod test {
         assert_eq!(
             rpn_str,
             String::from(expect_rpn),
-            "expected {expect_rpn} got {rpn_str}"
+            "expected '{expect_rpn}' got '{rpn_str}'"
         );
     }
 
@@ -463,6 +582,9 @@ mod test {
         "5"
     )]
     #[case::evaluate_starts_with_dec(".5 + .5", "1.0")]
+    #[case::evaluate_func("2 + abs((2+2)-10)", "8")]
+    #[case::evaluate_nested_func("abs( 10 - abs( ( 2 + 2 ) - 10 ) )", "4")]
+    #[case::evaluate_nested_func_with_neg("-abs( 10 - abs( -( 2 + 2 ) - 10 ) )", "-4")]
     fn evaluate(#[case] raw_infix: &str, #[case] expect: &str) {
         let tokens = match tokenize(raw_infix) {
             Ok(t) => t,
@@ -479,7 +601,7 @@ mod test {
         };
         assert_eq!(
             result, expected,
-            "expression {raw_infix} | expected {expected:?} got {result:?}"
+            "expression '{raw_infix}' | expected '{expected:?}' got '{result:?}'"
         );
     }
 

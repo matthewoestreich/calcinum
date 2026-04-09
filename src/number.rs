@@ -70,14 +70,21 @@ impl Number {
 
     pub fn pow(&self, exponent: i64) -> Result<Self, NumberError> {
         match self {
-            Number::Decimal(big_decimal) => Ok(Number::Decimal(big_decimal.powi(exponent))),
-            Number::Int(big_int) => {
+            Number::Decimal(d) => Ok(Number::Decimal(d.powi(exponent))),
+            Number::Int(i) => {
                 let exponent_u32: u32 = exponent.try_into().map_err(|_| {
                     let m = format!("Number::Int exponent must fit in u32: {exponent} does not!");
                     NumberError::InvalidExponent { message: m }
                 })?;
-                Ok(Number::Int(big_int.pow(exponent_u32)))
+                Ok(Number::Int(i.pow(exponent_u32)))
             }
+        }
+    }
+
+    pub fn abs(&self) -> Self {
+        match self {
+            Number::Int(i) => Number::Int(i.abs()),
+            Number::Decimal(d) => Number::Decimal(d.abs()),
         }
     }
 
