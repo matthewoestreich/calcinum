@@ -4,7 +4,7 @@ Calculator capable of handling arbitrarily large numbers, trading speed for prec
 
 Parses infix string via the [shunting yard](https://en.wikipedia.org/wiki/Shunting_yard_algorithm) algorithm, which is then evaluated and returned as custom `Number` type.
 
-# Order of Operations
+# Important Info
 
 - We use `C`/`Rust`-style operator precedence, with added support for exponentiation (`**`).
 - Parentheses (`(`, `)`) are considered control tokens and do not participate in precedence.
@@ -16,21 +16,23 @@ Parses infix string via the [shunting yard](https://en.wikipedia.org/wiki/Shunti
 
 # Operators
 
-| Operator | Operation      | Arity  | Precedence | Associativity |
-| -------- | -------------- | ------ | ---------- | ------------- |
-| `-`      | Negation       | Unary  | 8          | Right         |
-| `!`      | Bitwise NOT    | Unary  | 8          | Right         |
-| `**`     | Exponentiation | Binary | 7          | Right         |
-| `*`      | Multiplication | Binary | 6          | Left          |
-| `/`      | Division       | Binary | 6          | Left          |
-| `%`      | Remainder      | Binary | 6          | Left          |
-| `+`      | Addition       | Binary | 5          | Left          |
-| `-`      | Subtraction    | Binary | 5          | Left          |
-| `<<`     | Shift Left     | Binary | 4          | Left          |
-| `>>`     | Shift Right    | Binary | 4          | Left          |
-| `&`      | Bitwise AND    | Binary | 3          | Left          |
-| `^`      | Bitwise XOR    | Binary | 2          | Left          |
-| `\|`     | Bitwise OR     | Binary | 1          | Left          |
+Operators with order of operations.
+
+| Operator | Operation      | Precedence  | Arity  | Associativity |
+| -------- | -------------- | ----------- | ------ | ------------- |
+| `-`      | Negation       | 8 (highest) | Unary  | Right         |
+| `!`      | Bitwise NOT    | 8           | Unary  | Right         |
+| `**`     | Exponentiation | 7           | Binary | Right         |
+| `*`      | Multiplication | 6           | Binary | Left          |
+| `/`      | Division       | 6           | Binary | Left          |
+| `%`      | Remainder      | 6           | Binary | Left          |
+| `+`      | Addition       | 5           | Binary | Left          |
+| `-`      | Subtraction    | 5           | Binary | Left          |
+| `<<`     | Shift Left     | 4           | Binary | Left          |
+| `>>`     | Shift Right    | 4           | Binary | Left          |
+| `&`      | Bitwise AND    | 3           | Binary | Left          |
+| `^`      | Bitwise XOR    | 2           | Binary | Left          |
+| `\|`     | Bitwise OR     | 1 (lowest)  | Binary | Left          |
 
 # Library Usage
 
