@@ -346,12 +346,8 @@ pub fn eval(rpn_tokens: Vec<Token>) -> Result<Number, ParserError> {
     let mut stack = Vec::<Number>::new();
 
     for token in rpn_tokens {
-        if let Ok(n) = Number::try_from(&token) {
-            stack.push(n);
-            continue;
-        }
-
-        match &token {
+        match token {
+            Token::Number(n) => stack.push(n),
             Token::Function(f) => {
                 let x = stack.pop().ok_or(ParserError::InvalidExpression)?;
 
@@ -366,7 +362,7 @@ pub fn eval(rpn_tokens: Vec<Token>) -> Result<Number, ParserError> {
                     stack.push(match o {
                         Operator::Negate => -x,
                         Operator::Not => !x,
-                        _ => return Err(ParserError::ExpectedUnary(token)),
+                        _ => return Err(ParserError::ExpectedUnary(o)),
                     });
                 } else {
                     // Order matters here! 'b' must be popped before 'a'!
@@ -426,8 +422,8 @@ pub enum ParserError {
     UnrecognizedFunction {
         name: String,
     },
-    /// `Token` argument is what you got instead
-    ExpectedUnary(Token),
+    /// `Operator` argument is what you got instead
+    ExpectedUnary(Operator),
     /// `Token` argument is what you got instead
     ExpectedFunction(Token),
     /// `Token` argument is what you got instead
