@@ -56,7 +56,7 @@ The CLI accepts a single unnamed argument, which must be a valid infix expressio
 ```
 $ calcinum '2 + 2'
 4
-$ calcinum '2 + 2'
+$ calcinum '2 + (10 / 5)'
 4
 $ calcinum 'abs(-10)'
 10
