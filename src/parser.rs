@@ -266,7 +266,6 @@ pub fn tokenize(expression: &str) -> Result<Vec<Token>, ParserError> {
                 tokens.push(Token::Number(number));
             }
 
-            // Should be unreachable
             _ => return Err(ParserError::InvalidExpression),
         }
     }
