@@ -76,6 +76,7 @@ impl fmt::Display for Operator {
 pub enum Function {
     Abs,
     Floor,
+    Ceil,
 }
 
 impl FromStr for Function {
@@ -85,6 +86,7 @@ impl FromStr for Function {
         Ok(match s {
             "abs" => Self::Abs,
             "floor" => Self::Floor,
+            "ceil" => Self::Ceil,
             _ => {
                 return Err(ParserError::UnrecognizedFunction {
                     name: s.to_string(),
@@ -100,6 +102,7 @@ impl fmt::Display for Function {
         match self {
             Function::Abs => write!(f, "abs"),
             Function::Floor => write!(f, "floor"),
+            Function::Ceil => write!(f, "ceil"),
         }
     }
 }
@@ -355,6 +358,7 @@ pub fn eval(rpn_tokens: Vec<Token>) -> Result<Number, ParserError> {
                 stack.push(match f {
                     Function::Abs => x.abs(),
                     Function::Floor => x.floor(),
+                    Function::Ceil => x.ceil(),
                 });
             }
             Token::Operator(o) => {
@@ -590,6 +594,7 @@ mod test {
     #[case::evaluate_nested_func_with_neg("-abs( 10 - abs( -( 2 + 2 ) - 10 ) )", "-4")]
     #[case::evaluate11("!abs(-abs(2+3))", "-6")]
     #[case::evaluate_floor("1 + floor(11.5 + 10.2)", "22.0")]
+    #[case::evaluate_ceil("2 - ceil((10 ** 2) / 33)", "-2.0")]
     fn evaluate(#[case] raw_infix: &str, #[case] expect: &str) {
         let tokens = match tokenize(raw_infix) {
             Ok(t) => t,
@@ -609,50 +614,4 @@ mod test {
             "expression '{raw_infix}' | expected '{expected:?}' got '{result:?}'"
         );
     }
-
-    /*
-    #[test]
-    fn dec_leading_zero() {
-        let i = "1 / 2";
-        let e = Number::from_f64(0.5).unwrap();
-        let r = parse(i).unwrap();
-        println!("{r}");
-        assert_eq!(r, e, "expected {e} got {r}");
-    }
-
-    #[test]
-    fn float_return() {
-        // Tests return when it should be a Float
-        let expression = "2 / (1 - 56)";
-        let expected = Number::from_f64(-0.03636363636).unwrap();
-        let mut result = parse(expression).unwrap();
-        result.set_scale(11);
-        assert_eq!(
-            result, expected,
-            "expression = {expression} : expected {expected} got {result}"
-        );
-    }
-
-    #[test]
-    fn pow() {
-        let i = "2 ^ 3";
-        let e = Number::Int(8.into());
-        let r = parse(i).unwrap();
-        assert_eq!(r, e, "expected {e} got {r}");
-    }
-
-    #[test]
-    fn very_large_int() {
-        let r = parse("340282366920938463463374607431768211455 * 137").unwrap();
-        let e = Number::from_str("46618684268168569494482321218152244969335").unwrap();
-        assert_eq!(r, e, "expected {e} got {r}");
-    }
-
-    #[test]
-    fn very_large_dec() {
-        let r = parse("340282366920938463463374607431768211455 * 137.3367").unwrap();
-        let e = Number::from_str("46733257341110849475130439448474521326131.8985").unwrap();
-        assert_eq!(r, e, "expected {e} got {r}");
-    }
-    */
 }
