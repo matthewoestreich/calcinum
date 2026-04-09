@@ -365,7 +365,7 @@ pub fn eval(rpn_tokens: Vec<Token>) -> Result<Number, ParserError> {
                         _ => return Err(ParserError::ExpectedUnary(o)),
                     });
                 } else {
-                    // Order matters here! 'b' must be popped before 'a'!
+                    // Order matters here! 'rhs' must be popped before 'lhs'!
                     let rhs = stack.pop().ok_or(ParserError::InvalidExpression)?;
                     let lhs = stack.pop().ok_or(ParserError::InvalidExpression)?;
 
