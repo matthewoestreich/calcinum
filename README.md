@@ -1,5 +1,7 @@
 # calcinum
 
+[![Crates.io](https://img.shields.io/crates/v/calcinum.svg)](https://crates.io/crates/calcinum) [![docs.rs](https://img.shields.io/docsrs/calcinum?style=flat-square)](https://docs.rs/calcinum/latest/calcinum/)
+
 Calculator capable of handling arbitrarily large numbers, trading speed for precision - we use [`BigInt`](https://github.com/rust-num/num-bigint) and [`BigDecimal`](https://github.com/akubera/bigdecimal-rs) under the hood.
 
 Parses infix string via the [shunting yard](https://en.wikipedia.org/wiki/Shunting_yard_algorithm) algorithm, which is then evaluated and returned as custom `Number` type.
@@ -32,6 +34,35 @@ Operators with order of operations.
 | `&`      | Bitwise AND    | 3           | Binary | Left          |
 | `^`      | Bitwise XOR    | 2           | Binary | Left          |
 | `\|`     | Bitwise OR     | 1 (lowest)  | Binary | Left          |
+
+# Mathematical Functions
+
+You can provide functions within an infix expression.
+
+To call a function, type the function name, followed by an open parentheses, then the expression you'd like to evaluate, and finally a closing parentheses.
+
+For example: `abs(1 + ceil(100 / 33) - (12 +13)) / 2`
+
+| Function | Definition                                                |
+| -------- | --------------------------------------------------------- |
+| `abs`    | Non-negative distance of a number from zero.              |
+| `floor`  | Greatest integer less than or equal to a given number.    |
+| `ceil`   | Smallest integer greater than or equal to a given number. |
+
+# CLI Usage
+
+The CLI accepts a single unnamed argument, which must be a valid infix expression formatted as a string. Meaning, the expression must be surrounded by single or double quotes - **we recommend single quotes**.
+
+```
+$ calcinum '2 + 2'
+4
+$ calcinum '2 + 2'
+4
+$ calcinum 'abs(-10)'
+10
+$ calcinum '!abs(-10)'
+-11
+```
 
 # Library Usage
 

@@ -13,6 +13,14 @@ categories = [
   "mathematics",
 ] # See available categories here: https://crates.io/category_slugs
 
+[lib]
+name = "calcinum"
+path = "src/lib.rs"
+
+[[bin]]
+name = "calcinum"
+path = "src/bin/main.rs"
+
 [dependencies]
 bigdecimal = "0.4.10"
 num-bigint = "0.4.6"
