@@ -31,7 +31,7 @@ impl Context {
         println_green!("--- HISTORY RESET ---");
     }
 
-    pub fn parse(&mut self, expression: &str) {
+    pub fn parse_and_eval(&mut self, expression: &str) {
         let mut output = String::new();
         let mut iter = expression.chars().peekable();
 

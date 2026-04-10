@@ -81,7 +81,7 @@ fn repl_mode() {
                     "history" => ctx.print_history(),
                     "exit" => break,
                     "commands" => print_commands(&commands),
-                    s => ctx.parse(s),
+                    s => ctx.parse_and_eval(s),
                 };
                 rl.add_history_entry(input).expect("input added to history");
             }
