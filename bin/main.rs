@@ -74,7 +74,10 @@ fn repl_mode() {
                 let input = input.as_str();
                 match input {
                     "clear" => clear_screen(),
-                    "reset" => ctx.reset(),
+                    "reset" => {
+                        ctx.reset();
+                        _ = rl.clear_history();
+                    }
                     "history" => ctx.print_history(),
                     "exit" => break,
                     "commands" => print_commands(&commands),
