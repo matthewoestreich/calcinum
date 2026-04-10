@@ -5,7 +5,11 @@ mod context;
 use calcinum::parse_expression;
 use context::Context;
 use rustyline::DefaultEditor;
-use std::{env, process};
+use std::{
+    env,
+    io::{Write, stdout},
+    process,
+};
 
 const EXPECTED_ARGS_LEN: usize = 1;
 
@@ -15,31 +19,29 @@ fn main() {
     if args.is_empty() {
         repl_mode();
         process::exit(0);
-    }
-
-    if args.len() != EXPECTED_ARGS_LEN {
+    } else if args.len() != EXPECTED_ARGS_LEN {
         eprintln!(
             "ERROR expected {EXPECTED_ARGS_LEN} argument(s), got {}",
             args.len()
         );
         process::exit(1);
-    }
-
-    match args.first().expect("verified argc > 0").as_str() {
-        "--version" | "-v" => {
-            println!("{}", env!("CARGO_PKG_VERSION"));
-            process::exit(0);
-        }
-        s => match parse_expression(s) {
-            Ok(r) => {
-                println!("{r}");
+    } else {
+        match args.first().expect("verified argc > 0").as_str() {
+            "--version" | "-v" => {
+                println!("{}", env!("CARGO_PKG_VERSION"));
                 process::exit(0);
             }
-            Err(e) => {
-                eprintln!("ERROR parsing expression\n\n{s}\n\n{e}");
-                process::exit(1);
-            }
-        },
+            s => match parse_expression(s) {
+                Ok(r) => {
+                    println!("{r}");
+                    process::exit(0);
+                }
+                Err(e) => {
+                    eprintln!("ERROR parsing expression\n\n{s}\n\n{e}");
+                    process::exit(1);
+                }
+            },
+        }
     }
 }
 
@@ -60,7 +62,9 @@ fn repl_mode() {
     print_commands(&commands);
 
     loop {
-        let line = rl.readline(&format!("[{}]> ", format_cyan!("@{}", ctx.size() + 1)));
+        let line_num = format_cyan!("@{}", ctx.size() + 1);
+        let prompt = format!("[{line_num}]> ");
+        let line = rl.readline(&prompt);
 
         match line {
             Ok(input) => {
@@ -69,7 +73,7 @@ fn repl_mode() {
                 //
                 let input = input.as_str();
                 match input {
-                    "clear" => clear_screen!(),
+                    "clear" => clear_screen(),
                     "reset" => ctx.reset(),
                     "history" => ctx.print_history(),
                     "exit" => break,
@@ -91,4 +95,9 @@ fn print_commands(commands: &Vec<(&str, &str)>) {
         println!("      {}", cmd.1);
     }
     println!();
+}
+
+fn clear_screen() {
+    print!("\x1B[2J\x1B[1;1H");
+    stdout().flush().expect("stdout flush");
 }

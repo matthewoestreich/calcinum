@@ -1,11 +1,3 @@
-macro_rules! clear_screen {
-    () => {{
-        print!("\x1B[2J\x1B[1;1H");
-        use std::io::{Write, stdout};
-        stdout().flush().unwrap();
-    }};
-}
-
 macro_rules! println_red {
     ($($arg:tt)*) => {
         println!("\x1b[91m{}\x1b[0m", format_args!($($arg)*));
