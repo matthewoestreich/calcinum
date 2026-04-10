@@ -25,12 +25,11 @@ impl Context {
             let res = r.as_deref().unwrap_or("ERROR");
             println_green!("@{i}\t= {res}");
         }
-        println!();
     }
 
     pub fn reset(&mut self) {
         self.history.clear();
-        println_green!("\n--- HISTORY RESET ---\n");
+        println_green!("--- HISTORY RESET ---");
     }
 
     pub fn parse(&mut self, expression: &str) {
@@ -75,11 +74,11 @@ impl Context {
     fn eval(&mut self, expression: &str) {
         match parse_expression(expression) {
             Ok(r) => {
-                println_green!("\n{r}\n");
+                println_green!("{r}");
                 self.push_history(expression, Some(r.to_string()));
             }
             Err(e) => {
-                println_red!("\n{expression}\n{e}\n");
+                println_red!("{expression}\n{e}");
                 self.push_history(expression, None);
             }
         }

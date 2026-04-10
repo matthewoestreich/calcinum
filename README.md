@@ -100,22 +100,21 @@ history       prints available history
 commands      prints this message
 
 [@1]> 1+1
-
 2
-
-[@2]> abs(-10)
-
-10
-
-[@3]> 3 * 3 - (@1 + 10)
-
+[@2]> floor(112.134)
+112
+[@3]> 3*3-(@1+10)
 -3
-
 [@4]> abs(@3)
-
 3
-
-[@5]>
+[@5]> history
+@1	= 2
+@2	= 112
+@3	= -3
+@4	= 3
+[@5]> reset
+--- HISTORY RESET ---
+[@1]>
 ```
 
 # Library Usage
