@@ -111,7 +111,7 @@ commands      prints this message
 
 Line '10' does not exist.
 
-[6]> history
+[@6]> history
 @1
   expression = '1+1'
   result     = '2'
