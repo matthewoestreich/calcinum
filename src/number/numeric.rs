@@ -53,6 +53,9 @@ impl Number {
         }
     }
 
+    /// After converting to BigFloat from &str, we store the precision. We then use that precision
+    /// in the result - this is an attempt to keep precision as close as possible to what was passed in.
+    /// If the value you passed in is considered NaN or Inf, we default to 64 bits of precision.
     pub fn sin(&self) -> Result<Self, NumberError> {
         Ok(match self {
             Number::Int(i) => Self::sin_str(&i.to_string())?,
@@ -60,12 +63,35 @@ impl Number {
         })
     }
 
+    /// Please see the comments on `sin` fn.
     fn sin_str(s: &str) -> Result<Number, NumberError> {
         ASTRO_CONSTS.with(|cc| {
-            let bf = s.parse::<BigFloat>()?;
-            let res = bf.sin(53, AstroRoundingMode::None, &mut cc.borrow_mut());
-            let bd = res.to_string().parse::<BigDecimal>()?;
-            Ok(Number::Decimal(bd))
+            let og_bf = s.to_string().parse::<BigFloat>()?;
+            let prec = og_bf.precision().unwrap_or(64);
+            let sin_bf = og_bf.sin(prec, AstroRoundingMode::None, &mut cc.borrow_mut());
+            let result = sin_bf.to_string().parse::<BigDecimal>()?;
+            Ok(Number::Decimal(result))
+        })
+    }
+
+    /// After converting to BigFloat from &str, we store the precision. We then use that precision
+    /// in the result - this is an attempt to keep precision as close as possible to what was passed in.
+    /// If the value you passed in is considered NaN or Inf, we default to 64 bits of precision.
+    pub fn tan(&self) -> Result<Self, NumberError> {
+        match self {
+            Number::Int(i) => Self::tan_str(&i.to_string()),
+            Number::Decimal(d) => Self::tan_str(&d.to_string()),
+        }
+    }
+
+    /// Please see the comments on `tan` fn.
+    fn tan_str(s: &str) -> Result<Number, NumberError> {
+        ASTRO_CONSTS.with(|cc| {
+            let og_bf = s.to_string().parse::<BigFloat>()?;
+            let prec = og_bf.precision().unwrap_or(64);
+            let tan_bf = og_bf.tan(prec, AstroRoundingMode::None, &mut cc.borrow_mut());
+            let result = tan_bf.to_string().parse::<BigDecimal>()?;
+            Ok(Number::Decimal(result))
         })
     }
 }
@@ -143,5 +169,55 @@ mod test {
         let e = Number::from(bd);
         let r = x.floor();
         assert_eq!(r, e, "expected {e:?} got {r:?}");
+    }
+
+    #[rstest]
+    #[case::sin1("12", "-0.53657291800043497166")]
+    #[case::sin2("-12", "0.53657291800043497166")]
+    #[case::sin3("5.5", "-0.70554032557039190619")]
+    #[case::sin4("0", "0.0")]
+    #[case::sin5("0.0", "0.0")]
+    #[case::sin6("-0", "0.0")]
+    #[case::sin7("-0.0", "0.0")]
+    #[case::sin8("0.1", "0.099833416646828152304")]
+    #[case::sin9("18446744073709551615", "0.853986978245566353867800472464340994594")]
+    #[case::sin10(
+        "340282366920938463463374607431768211455",
+        "0.3392599560368070091613048584893837401487259503307889734193"
+    )]
+    #[case::sin11(
+        "3402823669209384634633746074317682114553242924593",
+        "0.7003828704955936420115909443933312486949704627925119745478"
+    )]
+    fn sin(#[case] n: &str, #[case] expect: &str) {
+        let x = n.parse::<Number>().unwrap();
+        let e = expect.parse::<Number>().unwrap();
+        let r = x.sin().expect("no errors in sin");
+        assert_eq!(r, e, "expected {e} got {r}");
+    }
+
+    #[rstest]
+    #[case::tan1("12", "-0.63585992866158079246")]
+    #[case::tan2("-12", "0.63585992866158079246")]
+    #[case::tan3("5.5", "-0.99558405221388501766")]
+    #[case::tan4("0", "0.0")]
+    #[case::tan5("0.0", "0.0")]
+    #[case::tan6("-0", "0.0")]
+    #[case::tan7("-0.0", "0.0")]
+    #[case::tan8("0.1", "0.10033467208545054506")]
+    #[case::tan9("18446744073709551615", "-1.64135345767507783113974557998746062216")]
+    #[case::tan10(
+        "340282366920938463463374607431768211455",
+        "0.3606490941686779605133609111062213018578087604852921288697"
+    )]
+    #[case::tan11(
+        "3402823669209384634633746074317682114553242924593",
+        "-0.9812481156540047271297101056006535923508753040076364516032"
+    )]
+    fn tan(#[case] n: &str, #[case] expect: &str) {
+        let x = n.parse::<Number>().unwrap();
+        let e = expect.parse::<Number>().unwrap();
+        let r = x.tan().expect("no errors in sin");
+        assert_eq!(r, e, "expected {e} got {r}");
     }
 }

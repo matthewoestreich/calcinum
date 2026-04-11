@@ -24,3 +24,40 @@ impl fmt::Binary for Number {
         write!(f, "{}", self.to_binary_str())
     }
 }
+
+#[allow(dead_code)]
+pub(crate) fn scientific_to_decimal(s: &str) -> String {
+    if !s.contains("e") && !s.contains("E") {
+        return s.to_string();
+    }
+
+    // split into coefficient and exponent
+    let (coeff, exp) = s
+        .split_once('e')
+        .or_else(|| s.split_once('E'))
+        .expect("invalid scientific notation");
+    let exp: i64 = exp.parse().expect("invalid exponent");
+    // split coefficient into integer + fractional parts
+    let mut parts = coeff.split('.');
+    let int_part = parts.next().unwrap();
+    let frac_part = parts.next().unwrap_or("");
+    let mut digits = format!("{int_part}{frac_part}");
+    let decimal_pos = int_part.len() as i64;
+    let new_pos = decimal_pos + exp;
+
+    if new_pos <= 0 {
+        // decimal goes before all digits
+        let zeros = "0".repeat((-new_pos) as usize);
+        format!("0.{zeros}{digits}")
+    } else if new_pos >= digits.len() as i64 {
+        // decimal goes after all digits
+        let zeros = "0".repeat((new_pos - digits.len() as i64) as usize);
+        digits.push_str(&zeros);
+        digits
+    } else {
+        // decimal goes somewhere in the middle
+        let pos = new_pos as usize;
+        digits.insert(pos, '.');
+        digits
+    }
+}
