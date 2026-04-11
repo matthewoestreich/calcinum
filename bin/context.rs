@@ -41,21 +41,21 @@ impl Context {
                 // c == '@' here
                 let Some(i) = self.parse_history_ref(&mut iter) else {
                     println_red!(
-                        "\nUnable to parse provided line. Expected format is '@1' where '1' is the target line.\n"
+                        "Unable to parse provided line. Expected format is '@1' where '1' is the target line."
                     );
                     self.push_history(expression, None);
                     return;
                 };
 
                 if i == 0 || i > self.history.len() {
-                    println_red!("\nLine '{i}' does not exist.\n");
+                    println_red!("Line '{i}' does not exist.");
                     self.push_history(expression, None);
                     return;
                 }
 
                 let Some(val) = self.resolve_history(i) else {
                     println_red!(
-                        "\nLine '{i}' had an error result. Error results cannot be used in expressions.\n"
+                        "Line '{i}' had an error result. Error results cannot be used in expressions."
                     );
                     self.push_history(expression, None);
                     return;
@@ -75,7 +75,8 @@ impl Context {
                 self.push_history(expression, Some(r.to_string()));
             }
             Err(e) => {
-                println_red!("{expression}\n{e}");
+                let nl = if expression.is_empty() { "" } else { "\n" };
+                println_red!("{expression}{nl}{e}");
                 self.push_history(expression, None);
             }
         }
