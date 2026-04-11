@@ -1,4 +1,9 @@
+use std::str::FromStr;
+
 use super::{Number, NumberError};
+use crate::number::CONSTS;
+use astro_float::{BigFloat, Consts};
+use bigdecimal::BigDecimal;
 use num_traits::Signed;
 
 impl Number {
@@ -49,5 +54,20 @@ impl Number {
                 Number::Decimal(bd)
             }
         }
+    }
+
+    pub fn sin(&mut self) {
+        *self = match self {
+            Number::Int(i) => Self::sin_str(&i.to_string()),
+            Number::Decimal(d) => Self::sin_str(&d.to_string()),
+        }
+    }
+
+    fn sin_str(s: &str) -> Number {
+        CONSTS.with(|cc| {
+            let bf = s.parse::<BigFloat>().expect("bigfloat");
+            let r = bf.sin(53, astro_float::RoundingMode::None, &mut cc.borrow_mut());
+            Number::Decimal(BigDecimal::from_str(&r.to_string()).expect("bigdecimal"))
+        })
     }
 }

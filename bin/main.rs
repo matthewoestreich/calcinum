@@ -68,10 +68,13 @@ fn repl_mode() {
 
         match line {
             Ok(input) => {
+                if input.is_empty() {
+                    continue;
+                }
+                let input = input.as_str();
                 //
                 // ADD YOUR COMMAND'S "HANDLER" HERE!
                 //
-                let input = input.as_str();
                 match input {
                     "clear" => clear_screen(),
                     "reset" => {

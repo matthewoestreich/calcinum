@@ -8,15 +8,20 @@ mod comparison;
 mod conversion;
 mod numeric;
 
+use astro_float::Consts;
 use bigdecimal::BigDecimal;
 use error::NumberError;
 use num_bigint::BigInt;
-use std::{cmp::Ordering, fmt};
+use std::{cell::RefCell, cmp::Ordering, fmt};
 
 #[derive(Clone)]
 pub enum Number {
     Int(BigInt),
     Decimal(BigDecimal),
+}
+
+thread_local! {
+    static CONSTS: RefCell<Consts> = RefCell::new(Consts::new().expect("astro-float consts"));
 }
 
 impl Number {
@@ -138,8 +143,84 @@ impl From<&Number> for NumberOrder {
 mod test {
     use super::*;
     use crate::{number::conversion::ToNumber, *};
+    use astro_float::{BigFloat, Sign};
+    use num_bigint::{self, BigUint};
+    use num_traits::{ConstZero, FromPrimitive, Signed};
     use rstest::*;
     use std::str::FromStr;
+
+    fn u64_to_bytes(data: Vec<u64>) -> Vec<u8> {
+        data.into_iter()
+            .flat_map(|n| n.to_le_bytes()) // or to_be_bytes()
+            .collect()
+    }
+
+    /* og
+    use num_bigint::{BigUint, BigInt, Sign};
+
+    fn main() {
+        // Your data
+        let mantissa_limbs: Vec<u64> = vec![7756100295892445184, 13706456983115432493];
+        let exponent: usize = 117;
+        let precision: usize = 128; // 2 limbs * 64 bits
+
+        // 1. Load the limbs into a BigUint (unsigned)
+        // BigUint::from_slice takes &[u32], so we usually use from_bytes_le
+        // or manually add each u64.
+        let mut bu = BigUint::from(0u32);
+        for (i, &limb) in mantissa_limbs.iter().enumerate() {
+            bu += BigUint::from(limb) << (i * 64);
+        }
+
+        // 2. Perform the shift logic: (Mantissa << Exponent) >> Precision
+        // This moves the binary point 'exponent' places to the right,
+        // then truncates the remaining fractional bits (the original 128 bits).
+        let integer_part = (bu << exponent) >> precision;
+
+        // 3. Apply the sign
+        let result = BigInt::from_biguint(Sign::Plus, integer_part);
+
+        println!("The integer part is: {}", result);
+    }
+        */
+
+    fn bigfloat_to_bigint(
+        mantissa_limbs: &[u64],
+        exponent: i32,
+        precision: usize,
+        sign: astro_float::Sign,
+    ) -> BigInt {
+        let mut bi = BigInt::from(0i32);
+        for (i, &limb) in mantissa_limbs.iter().enumerate() {
+            bi += BigInt::from(limb) << (i * 64);
+        }
+        bi <<= exponent;
+        bi >>= precision;
+        if sign == Sign::Neg { -bi } else { bi }
+    }
+
+    #[test]
+    fn foofoo() {
+        //let bf = BigFloat::from_f64(12345234356789.12234234233, 17);
+        //let bf = BigFloat::from_f64(123456789123456789123456789123456789.0, 256);
+        let bf = "123456789123456789123456789123456789.0"
+            .parse::<BigFloat>()
+            .unwrap();
+
+        let (mantissa, precision, sign, exponent, inexact) = bf.as_raw_parts().unwrap();
+
+        println!(
+            "mantissa = {mantissa:?}\n# of significant mantissa bits = {precision}\nsign = {sign:?}\nexponent = {exponent}\ninexact = {inexact}",
+        );
+
+        let integer_part = "123456789123456789123456789123456789123456789";
+        let bf = format!("{integer_part}.123456789")
+            .parse::<BigFloat>()
+            .unwrap();
+        let (mantissa, precision, sign, exponent, _) = bf.as_raw_parts().unwrap();
+        let bi = bigfloat_to_bigint(mantissa, exponent, precision, sign);
+        assert_eq!(integer_part, bi.to_string());
+    }
 
     #[test]
     fn from_str() {
