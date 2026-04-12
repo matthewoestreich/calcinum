@@ -1,7 +1,7 @@
 use crate::ast::Token;
 use std::fmt;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub enum Associativity {
     Left,
     Right,
