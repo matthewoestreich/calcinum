@@ -53,9 +53,10 @@ fn repl_mode() {
     let commands = vec![
         ("clear", "   clears the screen"),
         ("reset", "   resets history"),
-        ("exit", "    exits the repl"),
         ("history", " prints available history"),
         ("commands", "prints this message"),
+        ("help", "    prints this message"),
+        ("exit", "    exits the repl"),
     ];
 
     print_commands(&commands);
@@ -79,7 +80,7 @@ fn repl_mode() {
                     }
                     "history" => ctx.print_history(),
                     "exit" => break,
-                    "commands" => print_commands(&commands),
+                    "help" | "commands" => print_commands(&commands),
                     s => ctx.parse_and_eval(s),
                 };
                 rl.add_history_entry(input).expect("input added to history");
