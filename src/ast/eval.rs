@@ -14,6 +14,11 @@ pub fn eval(rpn_tokens: Vec<Token>) -> Result<Number, ParserError> {
     for token in rpn_tokens {
         match token {
             Token::Number(n) => stack.push(n),
+            Token::Constant(ref constant) => {
+                stack.push(match constant {
+                    super::Constant::PI => Number::pi(64)?,
+                });
+            }
             Token::Function(ref function) => {
                 let x = stack.pop().ok_or(ParserError::InvalidExpression)?;
                 stack.push(match function {
@@ -51,11 +56,6 @@ pub fn eval(rpn_tokens: Vec<Token>) -> Result<Number, ParserError> {
                     });
                 }
             },
-            Token::Constant(ref constant) => {
-                stack.push(match constant {
-                    super::Constant::PI => Number::pi(64)?,
-                });
-            }
             // This should be unreachable! Keeping it in for exhaustive pattern matching.
             Token::ParenthesesOpen | Token::ParenthesesClose => {
                 return Err(ParserError::UnexpectedToken(token));
