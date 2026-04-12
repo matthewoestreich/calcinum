@@ -1,6 +1,6 @@
 use crate::{
     Number,
-    ast::{Binary, Function, Operator, Token, Unary, error::ParserError},
+    ast::{Binary, Constant, Function, Operator, Token, Unary, error::ParserError},
 };
 
 /// Expects `rpn_tokens` in reverse polish notation
@@ -16,7 +16,7 @@ pub fn eval(rpn_tokens: Vec<Token>) -> Result<Number, ParserError> {
             Token::Number(n) => stack.push(n),
             Token::Constant(ref constant) => {
                 stack.push(match constant {
-                    super::Constant::PI => Number::pi(64)?,
+                    Constant::PI => Number::pi(64)?,
                 });
             }
             Token::Function(ref function) => {
