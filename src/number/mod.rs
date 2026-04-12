@@ -6,7 +6,6 @@ mod arithmetic;
 mod bitwise;
 mod comparison;
 mod conversion;
-mod conversion_big;
 mod format;
 mod numeric;
 

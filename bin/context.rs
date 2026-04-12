@@ -1,4 +1,3 @@
-use calcinum::parse_expression;
 use std::{iter, str::Chars};
 
 #[derive(Default, Debug)]
@@ -69,7 +68,7 @@ impl Context {
     }
 
     fn eval(&mut self, expression: &str) {
-        match parse_expression(expression) {
+        match calcinum::eval(expression) {
             Ok(r) => {
                 println_green!("{r}");
                 self.push_history(expression, Some(r.to_string()));

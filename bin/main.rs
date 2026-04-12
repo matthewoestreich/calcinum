@@ -2,7 +2,6 @@
 mod macros;
 mod context;
 
-use calcinum::parse_expression;
 use context::Context;
 use rustyline::DefaultEditor;
 use std::{
@@ -31,7 +30,7 @@ fn main() {
                 println!("{}", env!("CARGO_PKG_VERSION"));
                 process::exit(0);
             }
-            s => match parse_expression(s) {
+            s => match calcinum::eval(s) {
                 Ok(r) => {
                     println!("{r}");
                     process::exit(0);

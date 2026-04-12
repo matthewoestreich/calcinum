@@ -9,7 +9,7 @@ use ast::error::ParserError;
 use std::{error, fmt};
 
 /// Evaluates infix expression.
-pub fn parse_expression(infix_expression: &str) -> Result<Number, CalculatorError> {
+pub fn eval(infix_expression: &str) -> Result<Number, CalculatorError> {
     let tokens = ast::tokenize(infix_expression)?;
     let rpn_tokens = ast::parse(tokens)?;
     let result = ast::eval(rpn_tokens)?;

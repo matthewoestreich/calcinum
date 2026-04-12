@@ -283,15 +283,15 @@ let result = c.calculate().unwrap();
 println!("{result:?}"); // Number::Int(5)
 ```
 
-## Parse Infix Expression Helper
+## Evaluate Expression Helper
 
-You can acheive the same thing via `Calculator`, granted it will be more lines of code, hence the helper..
+You can acheive the same thing via `Calculator`, granted it will be more lines of code, hence the helper.
 
 ```rust
-use calcinum::{Calculator, parse_expression};
+use calcinum::Calculator;
 
 // Order of operations
-let result = parse_expression("3 + 4 * 2 / (1 - 5)").unwrap();
+let result = calcinum::eval("3 + 4 * 2 / (1 - 5)").unwrap();
 println!("{result:?}"); // Number::Int(1)
 // ~~ Equivalent to ~~
 let mut c = Calculator::new_with_infix("3 + 4 * 2 / (1 - 5)");
@@ -299,18 +299,18 @@ let result = c.calculate().unwrap();
 println!("{result:?}"); // Number::Int(1)
 
 // Fractions
-let result = parse_expression("1 / 2").unwrap();
+let result = calcinum::eval("1 / 2").unwrap();
 println!("{result:?}"); // Number::Decimal(0.5)
 
 // Exponentiation
-let result = parse_expression("2 ^ 3").unwrap();
+let result = calcinum::eval("2 ^ 3").unwrap();
 println!("{result:?}"); // Number::Int(8)
 
 // Very large integers
-let result = parse_expression("340282366920938463463374607431768211455 * 137").unwrap();
+let result = calcinum::eval("340282366920938463463374607431768211455 * 137").unwrap();
 println!("{result:?}"); // Number::Int(46618684268168569494482321218152244969335)
 
 // Very large decimals
-let result = parse_expression("340282366920938463463374607431768211455 * 137.3367").unwrap();
+let result = calcinum::eval("340282366920938463463374607431768211455 * 137.3367").unwrap();
 println!("{result:?}"); // Number::Decimal(46733257341110849475130439448474521326131.8985)
 ```
