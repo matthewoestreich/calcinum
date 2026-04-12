@@ -1,6 +1,14 @@
 use crate::ast::error::ParserError;
 use std::{fmt, str::FromStr};
 
+///
+/// -- Important info --
+///
+/// `round` : We round to nearest integer (0 decimal places); e.g., `12345.9448820304` -> `12346` and `12345.4448820304` -> `12345`.
+///           Whole numbers are just returned as is; e.g., `12345` -> `12345` and `69420` -> `69420`.
+///           Rounding mode is half even; round to ‘nearest neighbor’, if equidistant, round towards nearest even digit.
+///
+
 #[derive(Debug, Clone)]
 pub enum Function {
     Abs,
@@ -8,6 +16,7 @@ pub enum Function {
     Ceil,
     Sin,
     Tan,
+    Round,
 }
 
 impl FromStr for Function {
@@ -20,6 +29,7 @@ impl FromStr for Function {
             "ceil" => Self::Ceil,
             "sin" => Self::Sin,
             "tan" => Self::Tan,
+            "round" => Self::Round,
             _ => {
                 return Err(ParserError::UnrecognizedFunction {
                     name: s.to_string(),
@@ -40,6 +50,7 @@ impl fmt::Display for Function {
             Function::Ceil => write!(f, "ceil"),
             Function::Sin => write!(f, "sin"),
             Function::Tan => write!(f, "tan"),
+            Function::Round => write!(f, "round"),
         }
     }
 }

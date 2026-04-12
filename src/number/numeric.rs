@@ -134,6 +134,22 @@ impl Number {
             Ok(Number::Decimal(result))
         })
     }
+
+    /// Return given number rounded to ‘round_digits’ precision after the decimal point.
+    /// Rounding mode is half even; round to ‘nearest neighbor’, if equidistant, round
+    /// towards nearest even digit.
+    /// If the result of rounding a `Number::Decimal` is a whole number, we still keep
+    /// the result as `Number::Decimal`.
+    pub fn round(&self, round_digits: i64) -> Self {
+        match self {
+            Number::Int(_) => self.clone(),
+            Number::Decimal(d) => Self::Decimal(d.round(round_digits)),
+        }
+    }
+
+    pub fn round_assign(&mut self, round_digits: i64) {
+        *self = self.round(round_digits);
+    }
 }
 
 // ===========================================================================================
@@ -259,5 +275,43 @@ mod test {
         let e = expect.parse::<Number>().unwrap();
         let r = x.tan().expect("no errors in sin");
         assert_eq!(r, e, "expected {e} got {r}");
+    }
+
+    #[rstest]
+    #[case::round1("12.1", 0, "12.0")]
+    #[case::round2("654302", 0, "654302")]
+    #[case::round3("42323.345456344", 7, "42323.3454563")]
+    #[case::round4("42323.345456354", 7, "42323.3454564")]
+    #[case::round5("42323.345456364", 7, "42323.3454564")]
+    #[case::round6("-0.1115", 3, "-0.112")]
+    #[case::tie_even_2("2.5", 0, "2.0")]
+    #[case::tie_even_3("3.5", 0, "4.0")]
+    #[case::tie_even_4("4.5", 0, "4.0")]
+    #[case::carry1("999.999", 2, "1000.00")]
+    #[case::carry2("1.9999", 3, "2.000")]
+    #[case::carry3("9.9995", 3, "10.000")]
+    #[case::carry_tie("9.995", 2, "10.00")]
+    #[case::carry_tie2("1.005", 2, "1.00")]
+    #[case::large_int("999999999999.6", 0, "1000000000000.0")]
+    #[case::large_int2("1000000000000.4", 0, "1000000000000.0")]
+    #[case::zero("0.0", 0, "0.0")]
+    #[case::negative_zero("-0.0", 0, "0.0")]
+    #[case::small_neg("-0.4", 0, "0.0")]
+    #[case::idempotent1("12.000", 0, "12.0")]
+    #[case::idempotent2("12.00", 1, "12.00")]
+    #[case::idempotent3("12.3", 1, "12.3")]
+    #[case::long_fraction("1.123456789123456789", 5, "1.12346")]
+    #[case::down_vs_up1("1.499999", 0, "1.0")]
+    #[case::down_vs_up2("1.500001", 0, "2.0")]
+    fn round(#[case] n: &str, #[case] round_digits: i64, #[case] expect: &str) {
+        let x = n.parse::<Number>().unwrap();
+        let e = expect.parse::<Number>().unwrap();
+        let r = x.round(round_digits);
+        assert_eq!(r, e, "[round] expected {e} got {r}");
+
+        let mut x = n.parse::<Number>().unwrap();
+        let e = expect.parse::<Number>().unwrap();
+        x.round_assign(round_digits);
+        assert_eq!(x, e, "[round_assign] expected {e} got {r}");
     }
 }
