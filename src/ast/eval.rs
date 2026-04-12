@@ -20,14 +20,15 @@ pub fn eval(rpn_tokens: Vec<Token>) -> Result<Number, ParserError> {
                 });
             }
             Token::Function(ref function) => {
-                let x = stack.pop().ok_or(ParserError::InvalidExpression)?;
-                stack.push(match function {
-                    Function::Abs => x.abs(),
-                    Function::Floor => x.floor(),
-                    Function::Ceil => x.ceil(),
-                    Function::Sin => x.sin()?,
-                    Function::Tan => x.tan()?,
-                });
+                let mut x = stack.pop().ok_or(ParserError::InvalidExpression)?;
+                match function {
+                    Function::Abs => x.abs_assign(),
+                    Function::Floor => x.floor_assign(),
+                    Function::Ceil => x.ceil_assign(),
+                    Function::Sin => x.sin_assign()?,
+                    Function::Tan => x.tan_assign()?,
+                };
+                stack.push(x);
             }
             Token::Operator(ref operator) => match operator {
                 Operator::Unary(unary) => {
@@ -40,20 +41,21 @@ pub fn eval(rpn_tokens: Vec<Token>) -> Result<Number, ParserError> {
                 Operator::Binary(binary) => {
                     // Order matters here! 'rhs' must be popped before 'lhs'!
                     let rhs = stack.pop().ok_or(ParserError::InvalidExpression)?;
-                    let lhs = stack.pop().ok_or(ParserError::InvalidExpression)?;
-                    stack.push(match binary {
-                        Binary::Add => lhs + rhs,
-                        Binary::Subtract => lhs - rhs,
-                        Binary::Multiply => lhs * rhs,
-                        Binary::Divide => lhs.try_div(&rhs)?,
-                        Binary::Exponentiation => lhs.pow(rhs.to_i64_saturating())?,
-                        Binary::Remainder => lhs % rhs,
-                        Binary::And => lhs & rhs,
-                        Binary::Or => lhs | rhs,
-                        Binary::Xor => lhs ^ rhs,
-                        Binary::ShiftLeft => lhs << rhs,
-                        Binary::ShiftRight => lhs >> rhs,
-                    });
+                    let mut lhs = stack.pop().ok_or(ParserError::InvalidExpression)?;
+                    match binary {
+                        Binary::Add => lhs += rhs,
+                        Binary::Subtract => lhs -= rhs,
+                        Binary::Multiply => lhs *= rhs,
+                        Binary::Divide => lhs.try_div_assign(&rhs)?,
+                        Binary::Exponentiation => lhs.pow_assign(rhs.to_i64_saturating())?,
+                        Binary::Remainder => lhs %= rhs,
+                        Binary::And => lhs &= rhs,
+                        Binary::Or => lhs |= rhs,
+                        Binary::Xor => lhs ^= rhs,
+                        Binary::ShiftLeft => lhs <<= rhs,
+                        Binary::ShiftRight => lhs >>= rhs,
+                    };
+                    stack.push(lhs);
                 }
             },
             // This should be unreachable! Keeping it in for exhaustive pattern matching.

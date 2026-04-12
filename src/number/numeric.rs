@@ -30,6 +30,11 @@ impl Number {
         }
     }
 
+    pub fn pow_assign(&mut self, exponent: i64) -> Result<(), NumberError> {
+        *self = self.pow(exponent)?;
+        Ok(())
+    }
+
     /// The distance of a number from zero on a number line, regardless of direction.
     /// As a distance, it is always non-negative, effectively turning negative numbers
     /// positive and leaving positive numbers (and zero) unchanged.
@@ -38,6 +43,10 @@ impl Number {
             Number::Int(i) => Number::Int(i.abs()),
             Number::Decimal(d) => Number::Decimal(d.abs()),
         }
+    }
+
+    pub fn abs_assign(&mut self) {
+        *self = self.abs();
     }
 
     /// Variant is not coerced. If you call `.ceil()` with variant `Number::Int`,
@@ -53,6 +62,10 @@ impl Number {
         }
     }
 
+    pub fn ceil_assign(&mut self) {
+        *self = self.ceil();
+    }
+
     /// Variant is not coerced. If you call `.floor()` with variant `Number::Int`,
     /// we just clone it and return it. If you call `.floor()` on variant `Number::Decimal`,
     /// even though the result is a whole number, we keep it as a `Number::Decimal`.
@@ -66,6 +79,10 @@ impl Number {
         }
     }
 
+    pub fn floor_assign(&mut self) {
+        *self = self.floor();
+    }
+
     /// After converting to BigFloat from &str, we store the precision. We then use that precision
     /// in the result - this is an attempt to keep precision as close as possible to what was passed in.
     /// If the value you passed in is considered NaN or Inf, we default to 64 bits of precision.
@@ -74,6 +91,11 @@ impl Number {
             Number::Int(i) => Self::sin_str(&i.to_string())?,
             Number::Decimal(d) => Self::sin_str(&d.to_string())?,
         })
+    }
+
+    pub fn sin_assign(&mut self) -> Result<(), NumberError> {
+        *self = self.sin()?;
+        Ok(())
     }
 
     /// Please see the comments on `sin` fn.
@@ -95,6 +117,11 @@ impl Number {
             Number::Int(i) => Self::tan_str(&i.to_string()),
             Number::Decimal(d) => Self::tan_str(&d.to_string()),
         }
+    }
+
+    pub fn tan_assign(&mut self) -> Result<(), NumberError> {
+        *self = self.tan()?;
+        Ok(())
     }
 
     /// Please see the comments on `tan` fn.
