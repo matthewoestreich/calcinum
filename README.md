@@ -92,7 +92,7 @@ $ calcinum '!abs(-10)'
 
 ## Shell Mode
 
-Shell mode behaves like a REPL. Previous results can be interpolated into new expressions using @N, where N denotes the line number of the referenced result.
+Shell mode behaves like a REPL. Previous results can be interpolated into new expressions using `@N`, where `N` denotes the line number of the referenced result.
 
 Shell mode comes with a few extra commands, just type `commands` to view them.
 
