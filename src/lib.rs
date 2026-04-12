@@ -22,7 +22,7 @@ pub fn eval(infix_expression: &str) -> Result<Number, CalculatorError> {
 
 #[derive(Default, Debug, Clone)]
 pub struct Calculator {
-    infix: String,
+    expression: String,
 }
 
 impl Calculator {
@@ -30,41 +30,41 @@ impl Calculator {
         Self::default()
     }
 
-    pub fn new_with_infix(infix: &str) -> Self {
+    pub fn new_with_expression(infix: &str) -> Self {
         Self {
-            infix: infix.to_string(),
+            expression: infix.to_string(),
         }
     }
 
-    /// Returns clone of current infix expression
-    pub fn infix(&self) -> String {
-        String::from(self.infix.clone().trim())
+    /// Returns clone of current expression
+    pub fn expression(&self) -> String {
+        String::from(self.expression.clone().trim())
     }
 
-    /// Add digit to infix expression.
+    /// Add digit to expression.
     pub fn press(&mut self, key: Key) {
-        self.infix = format!("{}{key}", self.infix);
+        self.expression = format!("{}{key}", self.expression);
     }
 
-    /// Concates the provided expression to current infix expression with NO trailing space.
+    /// Appends the provided expression to stored expression with NO trailing space.
     /// It is up to you to ensure the provided expression contains valid characters!
-    pub fn expression(&mut self, infix_expression: &str) {
-        self.infix = format!("{}{infix_expression}", self.infix);
+    pub fn append(&mut self, expression: &str) {
+        self.expression = format!("{}{expression}", self.expression);
     }
 
-    /// Calculates constructed infix string.
-    /// We set the result to be the new infix, so you can use the result in further calculations.
+    /// Calculates stored expression.
+    /// We set the result to be the new expression, so you can use the result in further calculations.
     pub fn calculate(&mut self) -> Result<Number, CalculatorError> {
-        let tokens = ast::tokenize(&self.infix)?;
+        let tokens = ast::tokenize(&self.expression)?;
         let rpn_tokens = ast::parse(tokens)?;
         let result = ast::eval(rpn_tokens)?;
-        self.infix = result.to_string();
+        self.expression = result.to_string();
         Ok(result)
     }
 
-    /// Clear current infix
+    /// Clear current expression.
     pub fn clear(&mut self) {
-        self.infix.clear();
+        self.expression.clear();
     }
 }
 
@@ -173,10 +173,10 @@ mod test {
         c.press(Key::ParenthesesClose);
 
         assert_eq!(
-            c.infix(),
+            c.expression(),
             expected_expression,
             "expected '{expected_expression}' got '{}'",
-            c.infix()
+            c.expression()
         );
 
         let answer = c.calculate().unwrap();
@@ -201,10 +201,10 @@ mod test {
         c.press(Key::Four);
 
         assert_eq!(
-            c.infix(),
+            c.expression(),
             expected_expression,
             "expected '{expected_expression}' got '{}'",
-            c.infix()
+            c.expression()
         );
 
         let answer = c.calculate().unwrap();
@@ -231,10 +231,10 @@ mod test {
         c.press(Key::Four);
 
         assert_eq!(
-            c.infix(),
+            c.expression(),
             expected_expression,
             "expected '{expected_expression}' got '{}'",
-            c.infix()
+            c.expression()
         );
 
         let answer = c.calculate().unwrap();
@@ -252,15 +252,15 @@ mod test {
         let expected_expression = "(3 + 3) /2";
         let expected_answer = Number::Int(3.into());
 
-        c.expression("(3 + 3) ");
+        c.append("(3 + 3) ");
         c.press(Key::Divide);
         c.press(Key::Two);
 
         assert_eq!(
-            c.infix(),
+            c.expression(),
             expected_expression,
             "expected '{expected_expression}' got '{}'",
-            c.infix()
+            c.expression()
         );
 
         let answer = c.calculate().unwrap();
@@ -274,7 +274,7 @@ mod test {
     #[test]
     fn strictly_expression() {
         let mut c = Calculator::new();
-        c.expression("2+2");
+        c.append("2+2");
         let answer = c.calculate().unwrap();
         let expected_answer = Number::Int(4.into());
         assert_eq!(
@@ -286,10 +286,10 @@ mod test {
     #[test]
     fn continued_calc() {
         let mut c = Calculator::new();
-        c.expression("2+2");
+        c.append("2+2");
         let expected = Number::Int(4.into());
         let answer = c.calculate().unwrap();
-        assert_eq!(c.infix(), "4", "expected 4 got {}", c.infix());
+        assert_eq!(c.expression(), "4", "expected 4 got {}", c.expression());
         assert_eq!(answer, expected, "expected {expected} got {answer}");
         c.press(Key::Add);
         c.press(Key::Four);

@@ -4,7 +4,7 @@
 
 Calculator capable of handling arbitrarily large numbers, trading speed for precision - we use [`BigInt`](https://github.com/rust-num/num-bigint) and [`BigDecimal`](https://github.com/akubera/bigdecimal-rs) under the hood.
 
-Parses infix string via the [shunting yard](https://en.wikipedia.org/wiki/Shunting_yard_algorithm) algorithm, which is then evaluated and returned as custom `Number` type.
+Parses expressions via the [shunting yard](https://en.wikipedia.org/wiki/Shunting_yard_algorithm) algorithm, which is then evaluated and returned as custom `Number` type.
 
 # Important Info
 
@@ -39,7 +39,7 @@ Operators with order of operations.
 
 # Functions
 
-You can provide functions within an infix expression.
+You can provide functions within an expression.
 
 To call a function, type the function name, followed by an open parentheses, then the expression you'd like to evaluate, and finally a closing parentheses.
 
@@ -205,26 +205,26 @@ c.press(Key::Two); // 2
 c.press(Key::Add); // +
 c.press(Key::Two); // 2
 
-// View current infix representation
-println!("{}", c.infix()); // "2+2"
+// View current expression
+println!("{}", c.expression()); // "2+2"
 
 // Evaluate/calculate expression.
 let result = c.calculate().unwrap();
 println!("{result:?}"); // Number::Int(4)
 
-// We store the result as the new infix
+// We store the result as the new expression
 // expression so you can continue using
 // it in calculations.
-println!("{}", c.infix()); // "4"
+println!("{}", c.expression()); // "4"
 c.press(Key::Add);
 c.press(Key::Four);
-println!("{}", c.infix()); // "4+4"
+println!("{}", c.expression()); // "4+4"
 
 // Get new result
 let result = c.calculate().unwrap();
 println!("{result:?}"); // Number::Int(8)
 
-// Clear calculator (clears stored infix expression)
+// Clear calculator (clears stored expression)
 c.clear();
 ```
 
@@ -237,22 +237,22 @@ let mut c = Calculator::new();
 c.press(Key::One);
 c.press(Key::Period);
 c.press(Key::One);
-println!("{}", c.infix()); // "1.1"
+println!("{}", c.expression()); // "1.1"
 ```
 
-### Infix Expression
+### Evaluate Expression
 
-Create instance with infix expression in one line
+Create instance with expression in one line
 
 ```rust
 use calcinum::Calculator;
 
-let mut c = Calculator::new_with_infix("(2+8)/2");
+let mut c = Calculator::new_with_expression("(2+8)/2");
 let result = c.calculate().unwrap();
 println!("{result:?}"); // Number::Int(5)
 ```
 
-Append infix expression to current infix expression.
+Append expression to current expression.
 
 ```rust
 use calcinum::Calculator;
@@ -261,7 +261,7 @@ let mut c = Calculator::new();
 c.expression("(1+1)");
 // Appended to current expression; does not replace it.
 c.expression("*2/12-5*99");
-println!("{}", c.infix()); // "(1+1)*2/12-5*99"
+println!("{}", c.expression()); // "(1+1)*2/12-5*99"
 ```
 
 You can combine `expression("...")` with key `press(Key::_)` in any order.
@@ -271,14 +271,14 @@ use calcinum::{Calculator, Key};
 
 let mut c = Calculator::new();
 
-// Build infix expression
+// Build expression
 c.press(Key::ParenthesesOpen);
 c.press(Key::Two);
 c.press(Key::Add);
 c.expression("8)/2");
 
-// View current infix
-println!("{}", c.infix()); // "(2+8)/2"
+// View current expression
+println!("{}", c.expression()); // "(2+8)/2"
 
 let result = c.calculate().unwrap();
 println!("{result:?}"); // Number::Int(5)
@@ -295,7 +295,7 @@ use calcinum::Calculator;
 let result = calcinum::eval("3 + 4 * 2 / (1 - 5)").unwrap();
 println!("{result:?}"); // Number::Int(1)
 // ~~ Equivalent to ~~
-let mut c = Calculator::new_with_infix("3 + 4 * 2 / (1 - 5)");
+let mut c = Calculator::new_with_expression("3 + 4 * 2 / (1 - 5)");
 let result = c.calculate().unwrap();
 println!("{result:?}"); // Number::Int(1)
 
