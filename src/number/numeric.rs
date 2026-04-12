@@ -118,18 +118,6 @@ mod test {
     use super::*;
     use rstest::*;
 
-    #[test]
-    fn foofoo() {
-        //let p = Number::pi(u64::MAX as usize).unwrap();
-        //println!("{p}");
-
-        ASTRO_CONSTS.with(|cc| {
-            let mut ctx = cc.borrow_mut();
-            let p = ctx.pi(u64::MAX as usize, astro_float::RoundingMode::None);
-            println!("{p}");
-        })
-    }
-
     #[rstest]
     #[case::abs1("10", "10")]
     #[case::abs1_1("10.123", "10.123")]
