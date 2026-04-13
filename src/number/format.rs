@@ -58,11 +58,21 @@ impl Number {
     }
 }
 
+/// Converts scientific notation to standard notation.
+fn bd_fmt_standard(bd: &BigDecimal) -> String {
+    if bd.is_integer() {
+        format!("{bd:.0}")
+    } else {
+        let (_, scale) = bd.as_bigint_and_scale();
+        format!("{bd:.*}", (scale as usize).max(0))
+    }
+}
+
 impl fmt::Display for Number {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Number::Int(i) => write!(f, "{i}"),
-            Number::Decimal(d) => write!(f, "{}", Number::expand_scientific(&d.to_string())),
+            Number::Decimal(d) => write!(f, "{}", bd_fmt_standard(d)),
         }
     }
 }
@@ -71,11 +81,7 @@ impl fmt::Debug for Number {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Int(i) => write!(f, "Number::Int({i})"),
-            Self::Decimal(d) => write!(
-                f,
-                "Number::Decimal({})",
-                Number::expand_scientific(&d.to_string())
-            ),
+            Self::Decimal(d) => write!(f, "Number::Decimal({})", bd_fmt_standard(d)),
         }
     }
 }
@@ -85,8 +91,18 @@ impl fmt::Binary for Number {
         match self {
             Number::Int(i) => write!(f, "{i:b}"),
             Number::Decimal(d) => {
-                let bf = d.to_string().parse::<astro_float::BigFloat>().unwrap();
-                write!(f, "{bf:b}")
+                let d_str = d.to_string();
+                let (lhs, rhs) = d_str.split_once('.').unwrap_or((&d_str, ""));
+                let lhs_bi = lhs.parse::<BigInt>().unwrap();
+                if rhs.is_empty() {
+                    write!(f, "{lhs_bi:b}")
+                } else {
+                    write!(
+                        f,
+                        "{lhs_bi:b}.{:b}",
+                        rhs.to_string().parse::<BigInt>().unwrap()
+                    )
+                }
             }
         }
     }
@@ -208,12 +224,6 @@ mod test {
 
     #[test]
     fn foofoo() {
-        let n = "352.81".parse::<Number>().unwrap();
-        println!(
-            "original = {n:?}\n\nbinary scientific = {n:b}\n\npure binary = {}",
-            Number::expand_scientific(&format!("{n:b}"))
-        );
-        /*
         // Works : "1111011" = 123
         let xx = "1111011".parse::<Number>().unwrap();
         println!("should be '123' = {xx:?}");
@@ -222,7 +232,8 @@ mod test {
         let og_dec = "17958432089245743489.3597843208120587934";
         let og_dec_as_bin_str = "1.11110010011100100101010110101100101101001110111111110011000000101011100000110101101001101000011100000000101100101101111100010000101001010011000100011010111010010011101011101101010001001001e+111111";
         let n = og_dec_as_bin_str.parse::<Number>().unwrap();
-        println!("should be = {og_dec} = {n:?}");
+        println!("should be = {og_dec} = {n}");
+        println!("formatted as binary = {n:b}");
 
         // Doesn't work
         let nint = "123".parse::<Number>().unwrap();
@@ -232,6 +243,7 @@ mod test {
         let ndec = "123.123".parse::<Number>().unwrap();
         println!("should be 123.123 = {ndec}");
 
+        /*
         let bf = BigFloat::from_str(
             "17958432089245413415653413453514743489.359784321343545243523414341353108120587934",
         )

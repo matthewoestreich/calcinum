@@ -222,33 +222,49 @@ impl TryFrom<BigFloat> for Number {
 // ===========================================================================================
 
 fn bigfloat_from_bin_str(s: &str) -> BigFloat {
-    ASTRO_CONSTS.with(|cc| {
+    let bf = ASTRO_CONSTS.with(|cc| {
         BigFloat::parse(
             s,
             AstroRadix::Bin,
-            64,
+            usize::MAX,
             AstroRoundingMode::None,
             &mut cc.borrow_mut(),
         )
-    })
+    });
+    println!(
+        "xxxx[FromStr] -> parsed '{s}' as Binary Decimal\n\t[FromStr]-> BigFloat '{}'\n\t[FromStr]-> raw BigFloat as Binary '{bf:b}'",
+        Number::expand_scientific(&bf.to_string())
+    );
+    bf
 }
 
+// 1111100100111001001010101101011001011010011101111111100110000001|11000111101110000110110101010111101001100101000101011010011110
+// 1111100100111001001010101101011001011010011101111111100110000001|01011100000110101101001101000011100000000101100101101111100010000101001010011000100011010111010010011101011101101010001001001
+// 111110010011100100101010110101100101101001110111111110011000000101011100000110101101001101000011100000000101100101101111100010000101001010011000100011010111010010011101011101101010001001001
+// 111110010011100100101010110101100101101001110111111110011000000101011100000110101101001101000011100000000101100101101111100010000101001010011000100011010111010010011101011101101010001001001
+// 1111100100111001001010101101011001011010011101111111100110000001|11000111101110000110110101010111101001100101000101011010011110
+// 1111100100111001001010101101011001011010011101111111100110000001.01011100000110101101
+// 1111100100111001001010101101011001011010011101111111100110000001
 impl FromStr for Number {
     type Err = NumberError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         if Number::is_binary(s) {
             if let Ok(i) = BigInt::from_str_radix(s, 2) {
+                println!("[FromStr] -> parsed as Binary Int");
                 return Ok(Number::Int(i));
             }
             if let Ok(d) = Number::try_from(bigfloat_from_bin_str(s)) {
+                println!("[FromStr] -> parsed as Binary Decimal");
                 return Ok(d);
             }
         }
         if let Ok(i) = s.parse::<BigInt>() {
+            println!("[FromStr] -> parsed as NonBinary Int");
             return Ok(Number::Int(i));
         }
         if let Ok(d) = s.parse::<BigDecimal>() {
+            println!("[FromStr] -> parsed as NonBinary Decimal");
             return Ok(Number::Decimal(d));
         }
         Err(NumberError::Parsing {
