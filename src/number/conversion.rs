@@ -9,6 +9,8 @@ impl Number {
         Self::try_from(n)
     }
 
+    /// Converts the value of `self` to an `i64`. If the value cannot be
+    /// represented by an `i64`, then `None` is returned.
     pub fn to_i64(&self) -> Option<i64> {
         match self {
             Number::Int(i) => i.to_i64(),
@@ -27,6 +29,8 @@ impl Number {
         }
     }
 
+    /// Converts the value of `self` to an `i32`. If the value cannot be
+    /// represented by an `i32`, then `None` is returned.
     pub fn to_i32(&self) -> Option<i32> {
         match self {
             Number::Int(i) => i.to_i32(),
@@ -34,6 +38,8 @@ impl Number {
         }
     }
 
+    /// Converts the value of `self` to an `i128`. If the value cannot be
+    /// represented by an `i128`, then `None` is returned.
     pub fn to_i128(&self) -> Option<i128> {
         match self {
             Number::Int(i) => i.to_i128(),
@@ -84,15 +90,20 @@ impl Number {
         })
     }
 
+    /// Performs binary string validation to ensure we were given a binary string,
+    /// then converts the binary string into `Number`.
     pub(crate) fn binary_str_to_number(s: &str) -> Result<Self, NumberError> {
+        let s = s.trim();
+
+        // We were give "" or just the prefix to a binary string "0b"
+        if s.is_empty() || s == "0b" {
+            return Err(NumberError::Parsing {
+                value: "'' binary str cannot be empty".to_string(),
+            });
+        }
         if !Self::is_binary_str(s) {
             return Err(NumberError::Parsing {
                 value: format!("'{s}' is not a binary string, binary strings start with '0b'"),
-            });
-        }
-        if s.is_empty() {
-            return Err(NumberError::Parsing {
-                value: "'' binary str cannot be empty".to_string(),
             });
         }
 
@@ -305,6 +316,8 @@ impl FromStr for Number {
         if let Ok(d) = s.parse::<BigDecimal>() {
             return Ok(Number::Decimal(d));
         }
+
+        // Fall through to error.
         Err(NumberError::Parsing {
             value: s.to_string(),
         })
@@ -332,7 +345,6 @@ mod test {
 
         let i = 382.619.to_number(); // Number::Decimal(382.619)
         let bs = format!("{i:b}"); // "1111011"
-        println!("{bs}");
         // Parse binary string back into `Number` - needs "0b" prefix.
         let s = format!("0b{bs}");
         let n = s.parse::<Number>().unwrap(); // Number::Decimal(382.619)
@@ -340,30 +352,29 @@ mod test {
     }
 
     #[rstest]
-    #[case::from_str1("2.2", "2.2", NumberOrder::Decimal)]
-    #[case::from_str2("1", "1", NumberOrder::Int)]
-    #[case::from_str3(
-        "0b00000000000001110001110101110101.1000011011",
-        "466293.539",
-        NumberOrder::Decimal
-    )]
-    #[case::from_str4(
-        "0b-00000000000001110001110101110101.1000011011",
-        "-466293.539",
-        NumberOrder::Decimal
-    )]
+    #[case::from_str1("2.2", "2.2")]
+    #[case::from_str2("1", "1")]
+    #[case::from_str3("0b00000000000001110001110101110101.1000011011", "466293.539")]
+    #[case::from_str4("0b-00000000000001110001110101110101.1000011011", "-466293.539")]
+    #[case::no_binary_prefix_dont_treat_as_binary("10101011001", "10101011001")]
+    #[case::from_str5("0b1010", "10")]
+    #[case::from_str6("0b1010.1010", "10.10")]
     #[should_panic]
-    #[case::from_str_panic("abcd", "", NumberOrder::Int)]
-    fn from_str(#[case] number: &str, #[case] expect_str: &str, #[case] expect_order: NumberOrder) {
+    #[case::from_str_panic("abcd", "")]
+    #[should_panic]
+    #[case::from_str_panic_contains_invalid_num_3("0b101010131001", "")]
+    #[should_panic]
+    #[case::from_str_panic_multiple_neg("0b-101010-131001", "")]
+    #[should_panic]
+    #[case::from_str_panic_multiple_decimals("0b1010.1013.1001", "")]
+    #[should_panic]
+    #[case::from_str_panic("   ", "")]
+    #[should_panic]
+    #[case::from_str_panic("0b", "")]
+    fn from_str(#[case] number: &str, #[case] expect: &str) {
         let x = Number::from_str(number).expect("Number::from_str");
-        // for now use impl Display for assertion
-        let xr = format!("{x}");
-        assert_eq!(xr, expect_str, "expected str '{expect_str}' got str '{xr}'");
-        let xo = x.order();
-        assert_eq!(
-            xo, expect_order,
-            "for number '{x}', expected order '{expect_order:?}' got order '{xo:?}'"
-        );
+        let e = expect.parse::<Number>().expect("to parse 'expect' param");
+        assert_eq!(x, e, "expected '{e:?}' got '{x:?}'");
     }
 
     #[rstest]
