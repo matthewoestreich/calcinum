@@ -8,6 +8,14 @@ impl Number {
             Number::Decimal(d) => d.is_zero(),
         }
     }
+
+    pub fn is_int(&self) -> bool {
+        matches!(self, Number::Int(_))
+    }
+
+    pub fn is_decimal(&self) -> bool {
+        matches!(self, Number::Decimal(_))
+    }
 }
 
 impl PartialEq for Number {

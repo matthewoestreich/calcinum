@@ -3,7 +3,7 @@ mod number;
 
 pub use bigdecimal;
 pub use num_bigint;
-pub use number::{Number, NumberOrder, error::NumberError};
+pub use number::{Formatting, Number, NumberOrder, ToNumber, error::NumberError};
 
 use ast::error::ParserError;
 use std::{error, fmt};
