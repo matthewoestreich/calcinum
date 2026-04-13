@@ -1,7 +1,8 @@
-use crate::{Number, NumberError};
+use crate::{Number, NumberError, number::ASTRO_CONSTS};
+use astro_float::{BigFloat, Radix as AstroRadix, RoundingMode as AstroRoundingMode};
 use bigdecimal::BigDecimal;
 use num_bigint::BigInt;
-use num_traits::{Signed, ToPrimitive};
+use num_traits::{Num, Signed, ToPrimitive};
 use std::str::FromStr;
 
 impl Number {
@@ -52,28 +53,6 @@ impl Number {
         }
     }
 
-    /// If variant is `Number::Decimal` we return the integer part is binary
-    /// and the fractional part as binary, separated by a period.
-    /// For example, if you have a `Number::Decimal(100.773)` this method
-    /// returns : `"1100100.1100000101"`
-    pub fn to_binary_str(&self) -> String {
-        match self {
-            Number::Int(big_int) => format!("{big_int:b}").to_string(),
-            Number::Decimal(big_decimal) => {
-                let s = big_decimal.to_string();
-                let parts: Vec<_> = s.split('.').collect();
-                let mut output = Self::to_bin_str(parts[0]);
-                if parts[1].is_empty() {
-                    output
-                } else {
-                    output.push('.');
-                    output.push_str(&Self::to_bin_str(parts[1]));
-                    output
-                }
-            }
-        }
-    }
-
     /// If the underlying value for `T` does not fit within an
     /// `i128`, we truncate it to fit within `i128` bounds, which
     /// may result in data/precision/scale loss!
@@ -104,45 +83,6 @@ impl Number {
                 i64::MAX
             }
         })
-    }
-
-    fn to_bin_str(decimal_str: &str) -> String {
-        if decimal_str == "0" || decimal_str.is_empty() {
-            return "0".to_string();
-        }
-        let is_negative = decimal_str.starts_with('-');
-        let decimal_str = decimal_str.trim_start_matches('-');
-        let mut digits = Vec::with_capacity(decimal_str.len());
-        for c in decimal_str.chars() {
-            if let Some(d) = c.to_digit(10) {
-                digits.push(d as u8);
-            } else {
-                return format!("<INVALID_DIGIT_FOUND = '{c}'>");
-            }
-        }
-        let mut binary_bits = String::new();
-        while !digits.is_empty() {
-            let mut remainder = 0;
-            let mut next_digits = Vec::with_capacity(digits.len());
-            // Long division by 2
-            for &digit in &digits {
-                let current = digit + remainder * 10;
-                let quotient = current / 2;
-                remainder = current % 2;
-                // Only push if it's not a leading zero
-                if !next_digits.is_empty() || quotient > 0 {
-                    next_digits.push(quotient);
-                }
-            }
-            // The remainder of the full division is our binary digit
-            binary_bits.push(if remainder == 0 { '0' } else { '1' });
-            digits = next_digits;
-        }
-        if is_negative {
-            binary_bits.push('-');
-        }
-        // Reverse to get the correct order (MSB first)
-        binary_bits.chars().rev().collect()
     }
 }
 
@@ -267,20 +207,52 @@ impl TryFrom<f64> for Number {
     }
 }
 
+impl TryFrom<BigFloat> for Number {
+    type Error = NumberError;
+
+    fn try_from(value: BigFloat) -> Result<Self, Self::Error> {
+        let bfstr = value.to_string();
+        let bd = bfstr.parse::<BigDecimal>()?;
+        Ok(Self::Decimal(bd))
+    }
+}
+
 // ===========================================================================================
 // ========================== FromStr ========================================================
 // ===========================================================================================
+
+fn bigfloat_from_bin_str(s: &str) -> BigFloat {
+    ASTRO_CONSTS.with(|cc| {
+        BigFloat::parse(
+            s,
+            AstroRadix::Bin,
+            usize::MAX,
+            AstroRoundingMode::None,
+            &mut cc.borrow_mut(),
+        )
+    })
+}
 
 impl FromStr for Number {
     type Err = NumberError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        s.parse::<BigInt>().map(Self::Int).or_else(|_| {
-            s.parse::<BigDecimal>()
-                .map(Self::Decimal)
-                .map_err(|_| NumberError::Parsing {
-                    value: s.to_string(),
-                })
+        if Number::is_binary(s) {
+            if let Ok(i) = BigInt::from_str_radix(s, 2) {
+                return Ok(Number::Int(i));
+            }
+            if let Ok(d) = Number::try_from(bigfloat_from_bin_str(s)) {
+                return Ok(d);
+            }
+        }
+        if let Ok(i) = s.parse::<BigInt>() {
+            return Ok(Number::Int(i));
+        }
+        if let Ok(d) = s.parse::<BigDecimal>() {
+            return Ok(Number::Decimal(d));
+        }
+        Err(NumberError::Parsing {
+            value: s.to_string(),
         })
     }
 }
@@ -296,7 +268,7 @@ mod test {
     use std::str::FromStr as _;
 
     #[test]
-    fn from_str() {
+    fn from_str_1() {
         let a = Number::from_str("1.1").unwrap();
         let ea = 1.1.to_number();
         assert_eq!(a, ea, "expected {ea:?} got {a:?}");
@@ -306,40 +278,42 @@ mod test {
         assert_eq!(b, eb, "expected {eb:?} got {b:?}");
     }
 
+    #[rstest]
+    #[case::from_str1("1.1", "1.1", NumberOrder::Decimal)]
+    #[case::from_str2("1", "1", NumberOrder::Int)]
+    #[case::binary_plain_int(
+        "11110011001110000110000001100011100011110",
+        "2089245787934",
+        NumberOrder::Int
+    )]
+    #[case::binary_scientific_dec(
+        "1.11110010011100100101010110101100101101001110111111110011000000101011100000110101101001101000011100000000101100101101111100010000101001010011000100011010111010010011101011101101010001001001e+111111",
+        "17958432089245743489.3597843208120587934",
+        NumberOrder::Decimal
+    )]
+    /// FOR FROMSTR ON BINARY STRINGS, NEED TO FORCE PPLL TO USE A 0b PREFIX OR ELSE
+    /// THERE IS NO WAY TO DISTINGUISH `1010` (integer, as in the number 1,010) FROM `1010` (binary, as in the number 10)
+    #[case::binary_scientific_int("1.10e+3", "1010", NumberOrder::Int)]
+    fn from_str(#[case] s: &str, #[case] expect_str: &str, #[case] expect_order: NumberOrder) {
+        let expect_str = expect_str.to_string();
+        let x = s.parse::<Number>().unwrap();
+        assert_eq!(
+            x.order(),
+            expect_order,
+            "expected order '{expect_order:?}' got order '{:?}'",
+            x.order()
+        );
+        assert_eq!(
+            x.to_string(),
+            expect_str,
+            "expected string '{expect_str}' got string '{}'",
+            x.to_string()
+        );
+    }
+
     #[test]
     fn from_f64() {
         let a = Number::from_f64(1.1).unwrap();
         assert_eq!(a.order(), NumberOrder::Decimal);
-    }
-
-    #[rstest]
-    #[case::binary_str1(
-        "17958432089245743489.3597843208120587934",
-        "1111100100111001001010101101011001011010011101111111100110000001.11000111101110000110110101010111101001100101000101011010011110"
-    )]
-    #[case::binary_str_bigdecimal_neg(
-        "-17958432089245743489.3597843208120587934",
-        "-1111100100111001001010101101011001011010011101111111100110000001.11000111101110000110110101010111101001100101000101011010011110"
-    )]
-    #[case::binary_str2(
-        "17958432089245743489",
-        "1111100100111001001010101101011001011010011101111111100110000001"
-    )]
-    #[case::binary_str_bigint_neg(
-        "-17958432089245743489",
-        "-1111100100111001001010101101011001011010011101111111100110000001"
-    )]
-    fn binary_str(#[case] number: &str, #[case] expect: &str) {
-        let n = Number::from_str(number).unwrap();
-        let fr = format!("{n:b}");
-        assert_eq!(
-            expect, fr,
-            "[format!(\"{n:b}\")] expected '{expect}' got '{fr}'"
-        );
-        let br = n.to_binary_str();
-        assert_eq!(
-            expect, br,
-            "[n.to_binary_str()] expected '{expect}' got '{br}'"
-        );
     }
 }

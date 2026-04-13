@@ -30,48 +30,59 @@ impl Context {
     }
 
     pub fn parse_and_eval(&mut self, expression: &str) {
+        let mut fmt_str = None;
         let mut output = String::new();
         let mut iter = expression.chars().peekable();
 
         while let Some(c) = iter.next() {
-            if c != '@' {
-                output.push(c);
-            } else {
-                // c == '@' here
-                let Some(i) = self.parse_history_ref(&mut iter) else {
-                    println_red!(
-                        "Unable to parse provided line. Expected format is '@1' where '1' is the target line."
-                    );
-                    self.push_history(expression, None);
-                    return;
-                };
-
-                if i == 0 || i > self.history.len() {
-                    println_red!("Line '{i}' does not exist.");
-                    self.push_history(expression, None);
-                    return;
+            match c {
+                ':' => {
+                    // Parse fmt string.
+                    let mut fs = String::new();
+                    while let Some(nc) = iter.peek() {
+                        fs.push(*nc);
+                        iter.next();
+                    }
+                    fmt_str = Some(fs.trim().to_string());
                 }
+                '@' => {
+                    let Some(i) = self.parse_history_ref(&mut iter) else {
+                        println_red!(
+                            "Unable to parse provided line. Expected format is '@1' where '1' is the target line."
+                        );
+                        self.push_history(expression, None);
+                        return;
+                    };
 
-                let Some(val) = self.resolve_history(i) else {
-                    println_red!(
-                        "Line '{i}' had an error result. Error results cannot be used in expressions."
-                    );
-                    self.push_history(expression, None);
-                    return;
-                };
+                    if i == 0 || i > self.history.len() {
+                        println_red!("Line '{i}' does not exist.");
+                        self.push_history(expression, None);
+                        return;
+                    }
 
-                output.push_str(val);
+                    let Some(val) = self.resolve_history(i) else {
+                        println_red!(
+                            "Line '{i}' had an error result. Error results cannot be used in expressions."
+                        );
+                        self.push_history(expression, None);
+                        return;
+                    };
+
+                    output.push_str(val);
+                }
+                _ => output.push(c),
             }
         }
 
-        self.eval(&output);
+        self.eval(&output, fmt_str);
     }
 
-    fn eval(&mut self, expression: &str) {
+    fn eval(&mut self, expression: &str, fmt_str: Option<String>) {
         match calcinum::eval(expression) {
             Ok(r) => {
-                println_green!("{r}");
                 self.push_history(expression, Some(r.to_string()));
+                if fmt_str.is_some() {}
+                println_green!("{r}");
             }
             Err(e) => {
                 let nl = if expression.is_empty() { "" } else { "\n" };
