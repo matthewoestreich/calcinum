@@ -14,6 +14,9 @@ use bigdecimal::BigDecimal;
 use num_bigint::BigInt;
 use std::{cell::RefCell, cmp::Ordering};
 
+#[allow(unused_imports)]
+pub use conversion::ToNumber;
+
 #[derive(Clone)]
 pub enum Number {
     Int(BigInt),
