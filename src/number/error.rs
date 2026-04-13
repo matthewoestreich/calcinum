@@ -1,5 +1,6 @@
 use astro_float::Error as AstroError;
 use bigdecimal::ParseBigDecimalError;
+use num_bigint::ParseBigIntError;
 use std::{error, fmt};
 
 #[derive(Debug, Clone)]
@@ -27,6 +28,14 @@ impl fmt::Display for NumberError {
 
 impl From<ParseBigDecimalError> for NumberError {
     fn from(value: ParseBigDecimalError) -> Self {
+        Self::Parsing {
+            value: value.to_string(),
+        }
+    }
+}
+
+impl From<ParseBigIntError> for NumberError {
+    fn from(value: ParseBigIntError) -> Self {
         Self::Parsing {
             value: value.to_string(),
         }

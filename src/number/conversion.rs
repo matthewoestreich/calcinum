@@ -1,7 +1,7 @@
 use crate::{Number, NumberError};
 use bigdecimal::BigDecimal;
 use num_bigint::BigInt;
-use num_traits::{Signed, ToPrimitive};
+use num_traits::{Num, Signed, ToPrimitive};
 use std::str::FromStr;
 
 impl Number {
@@ -82,6 +82,85 @@ impl Number {
                 i64::MAX
             }
         })
+    }
+
+    pub(crate) fn binary_str_to_number(s: &str) -> Result<Self, NumberError> {
+        if !Self::is_binary_str(s) {
+            return Err(NumberError::Parsing {
+                value: format!("'{s}' is not a binary string, binary strings start with '0b'"),
+            });
+        }
+        if s.is_empty() {
+            return Err(NumberError::Parsing {
+                value: "'' binary str cannot be empty".to_string(),
+            });
+        }
+
+        let s = s.strip_prefix("0b").unwrap_or(s);
+
+        // binary string has no decimal, parse binary string as Int variant.
+        Ok(if !s.contains('.') {
+            let bi = BigInt::from_str_radix(s, 2)?;
+            Number::Int(bi)
+        } else {
+            // binary string has a decimal, parse binary string as Decimal variant.
+            let is_negative = s.starts_with('-');
+            let (lhs, rhs) = s.split_once('.').unwrap_or((s, ""));
+            let mut dec_str = Self::binary_str_to_decimal_str(lhs);
+            if !rhs.is_empty() {
+                dec_str.push('.');
+                dec_str.push_str(&Self::binary_str_to_decimal_str(rhs));
+            }
+            if is_negative {
+                dec_str = format!("-{dec_str}");
+            }
+            Number::Decimal(BigDecimal::from_str_radix(&dec_str, 10)?)
+        })
+    }
+
+    /// Assumes you have already validated that what you are passing in is ACTUALLY a binary string!
+    fn binary_str_to_decimal_str(bin: &str) -> String {
+        let base_u64: u64 = 1_000_000_000;
+        let base_u32: u32 = base_u64 as u32;
+        let mut digits: Vec<u32> = vec![0]; // little-endian (least significant first)
+
+        for c in bin.chars() {
+            let mut carry: u64 = 0;
+            for d in digits.iter_mut() {
+                let val = (*d as u64) * 2 + carry;
+                *d = (val % base_u64) as u32;
+                carry = val / base_u64;
+            }
+            if carry > 0 {
+                digits.push(carry as u32);
+            }
+
+            if c == '1' {
+                let mut carry = 1;
+                for d in digits.iter_mut() {
+                    let val = *d + carry;
+                    *d = val % base_u32;
+                    carry = val / base_u32;
+
+                    if carry == 0 {
+                        break;
+                    }
+                }
+                if carry > 0 {
+                    digits.push(carry);
+                }
+            }
+        }
+
+        let mut s = String::new();
+        for (i, &d) in digits.iter().rev().enumerate() {
+            if i == 0 {
+                s.push_str(&d.to_string());
+            } else {
+                s.push_str(&format!("{:09}", d)); // zero-pad
+            }
+        }
+        s
     }
 }
 
@@ -214,12 +293,20 @@ impl FromStr for Number {
     type Err = NumberError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        s.parse::<BigInt>().map(Self::Int).or_else(|_| {
-            s.parse::<BigDecimal>()
-                .map(Self::Decimal)
-                .map_err(|_| NumberError::Parsing {
-                    value: s.to_string(),
-                })
+        // If we were given a binary string.
+        if let Ok(n) = Number::binary_str_to_number(s) {
+            return Ok(n);
+        }
+
+        // If we were given a decimal string.
+        if let Ok(i) = s.parse::<BigInt>() {
+            return Ok(Number::Int(i));
+        }
+        if let Ok(d) = s.parse::<BigDecimal>() {
+            return Ok(Number::Decimal(d));
+        }
+        Err(NumberError::Parsing {
+            value: s.to_string(),
         })
     }
 }
@@ -230,23 +317,69 @@ impl FromStr for Number {
 
 #[cfg(test)]
 mod test {
-    use crate::*;
+    use crate::{number::ToNumber, *};
     use rstest::*;
     use std::str::FromStr as _;
 
+    #[test]
+    fn round_trip_binary_conversion() {
+        let i = 123.to_number(); // Number::Int(123)
+        let bs = format!("{i:b}"); // "1111011"
+        // Parse binary string back into `Number` - needs "0b" prefix.
+        let s = format!("0b{bs}");
+        let n = s.parse::<Number>().unwrap(); // Number::Int(123)
+        assert_eq!(i, n);
+
+        let i = 382.619.to_number(); // Number::Decimal(382.619)
+        let bs = format!("{i:b}"); // "1111011"
+        println!("{bs}");
+        // Parse binary string back into `Number` - needs "0b" prefix.
+        let s = format!("0b{bs}");
+        let n = s.parse::<Number>().unwrap(); // Number::Decimal(382.619)
+        assert_eq!(i, n);
+    }
+
     #[rstest]
-    #[case::from_str1("1.1", "1.1", NumberOrder::Decimal)]
+    #[case::from_str1("2.2", "2.2", NumberOrder::Decimal)]
     #[case::from_str2("1", "1", NumberOrder::Int)]
+    #[case::from_str3(
+        "0b00000000000001110001110101110101.1000011011",
+        "466293.539",
+        NumberOrder::Decimal
+    )]
+    #[case::from_str4(
+        "0b-00000000000001110001110101110101.1000011011",
+        "-466293.539",
+        NumberOrder::Decimal
+    )]
+    #[should_panic]
+    #[case::from_str_panic("abcd", "", NumberOrder::Int)]
     fn from_str(#[case] number: &str, #[case] expect_str: &str, #[case] expect_order: NumberOrder) {
-        let x = Number::from_str(number).unwrap();
+        let x = Number::from_str(number).expect("Number::from_str");
         // for now use impl Display for assertion
         let xr = format!("{x}");
         assert_eq!(xr, expect_str, "expected str '{expect_str}' got str '{xr}'");
         let xo = x.order();
         assert_eq!(
             xo, expect_order,
-            "expected order '{expect_order:?}' got order '{xo:?}'"
+            "for number '{x}', expected order '{expect_order:?}' got order '{xo:?}'"
         );
+    }
+
+    #[rstest]
+    #[case::bin_str_to_number1("0b1010", "10")]
+    #[case::bin_str_to_number2("0b-1010", "-10")]
+    #[case::bin_str_to_number3("0b00000000000001110001110101110101.1000011011", "466293.539")]
+    #[case::bin_str_to_number4("0b-00000000000001110001110101110101.1000011011", "-466293.539")]
+    fn binary_str_to_number(#[case] number: &str, #[case] expect: &str) {
+        let x = match Number::binary_str_to_number(number) {
+            Ok(r) => r,
+            Err(e) => panic!("ERROR => '{number}' is not a binary string => {e:?}"),
+        };
+        let e = expect
+            .parse::<Number>()
+            .expect("expected 'expect' argument to parse just fine into Number");
+        assert_eq!(x, e, "expected '{e:?}' got '{x:?}'");
     }
 
     #[test]

@@ -1,5 +1,4 @@
 use crate::Number;
-use bigdecimal::BigDecimal;
 use std::fmt;
 
 impl Number {
@@ -23,6 +22,10 @@ impl Number {
                 }
             }
         }
+    }
+
+    pub(crate) fn is_binary_str(s: &str) -> bool {
+        s.starts_with("0b")
     }
 
     // Helper for `.to_binary_str`
@@ -64,22 +67,13 @@ impl Number {
         // Reverse to get the correct order (MSB first)
         binary_bits.chars().rev().collect()
     }
-
-    /// Converts scientific notation to standard notation.
-    fn bigdecimal_expand_scientific(bd: &BigDecimal) -> String {
-        let mut scale = 0;
-        if !bd.is_integer() {
-            (_, scale) = bd.as_bigint_and_scale();
-        }
-        format!("{bd:.scale$}", scale = (scale as usize).max(0))
-    }
 }
 
 impl fmt::Display for Number {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Number::Int(i) => write!(f, "{i}"),
-            Number::Decimal(d) => write!(f, "{}", Number::bigdecimal_expand_scientific(d)),
+            Number::Decimal(d) => write!(f, "{}", d.to_plain_string()),
         }
     }
 }
@@ -88,11 +82,7 @@ impl fmt::Debug for Number {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Int(i) => write!(f, "Number::Int({i})"),
-            Self::Decimal(d) => write!(
-                f,
-                "Number::Decimal({})",
-                Number::bigdecimal_expand_scientific(d)
-            ),
+            Self::Decimal(d) => write!(f, "Number::Decimal({})", d.to_plain_string()),
         }
     }
 }
@@ -136,7 +126,7 @@ mod test {
         let r = format!("{x:?}");
         assert_eq!(
             r, expect_display,
-            "expected display '{expect_display}' got display '{r}'"
+            "expected debug '{expect_display}' got debug '{r}'"
         );
     }
 
@@ -157,7 +147,7 @@ mod test {
         "-17958432089245743489",
         "-1111100100111001001010101101011001011010011101111111100110000001"
     )]
-    fn binary_str(#[case] number: &str, #[case] expect: &str) {
+    fn fmt_binary_str(#[case] number: &str, #[case] expect: &str) {
         let n = number.parse::<Number>().unwrap();
         let fr = format!("{n:b}");
         assert_eq!(

@@ -2,24 +2,46 @@
 
 [![Crates.io](https://img.shields.io/crates/v/calcinum.svg)](https://crates.io/crates/calcinum) [![docs.rs](https://img.shields.io/docsrs/calcinum?style=flat-square)](https://docs.rs/calcinum/latest/calcinum/)
 
-Calculator capable of handling arbitrarily large numbers, trading speed for precision - we use [`BigInt`](https://github.com/rust-num/num-bigint) and [`BigDecimal`](https://github.com/akubera/bigdecimal-rs) under the hood.
+`calcinum` is an expression evaluator and arbitrary-precision numeric system supporting integers, decimals, and binary-aware arithmetic. It provides both a high-level calculator interface and a low-level Number type for direct manipulation.
 
-Parses expressions via the [shunting yard](https://en.wikipedia.org/wiki/Shunting_yard_algorithm) algorithm, which is then evaluated and returned as custom `Number` type.
+# Getting Started
 
-# Important Info
+## CLI
 
-- We use `C`/`Rust`-style operator precedence, with added support for exponentiation (`**`).
-- Parentheses (`(`, `)`) are considered control tokens and do not participate in precedence.
+There are two modes; [command mode](#command-mode) and [shell mode](#shell-mode). Please see [CLI Usage](#cli-usage) for examples.
+
+| Description                                                                                      | Argument         | Shorthand |
+| ------------------------------------------------------------------------------------------------ | ---------------- | --------- |
+| Provide no arguments to enter [shell mode](#shell-mode)                                          |                  |           |
+| Provide an expression enclosed in quotes (**single quotes reccommended**) for instant evaluation | `'<expression>'` |           |
+| Display current version.                                                                         | `--version`      | `-v`      |
+
+## Library
+
+You can either work directly with the `Number` enum, use the `Calculator` struct, or simply evaluate expressions with the exposed `calcinum::eval` function.
+
+Please see [Library Usage](#library-usage) for examples
+
+- The `calcinum::eval` function evaluates expressions without any bells or whistles.
+- The `Calculator` behaves like a traditional calculator—it evaluates expressions while correctly handling operator precedence.
+  - This makes it easy to input and compute expressions without worrying about the underlying parsing or evaluation logic.
+- The `Number` enum represents numeric values.
+  - It provides a flexible type for working with arbitrarily large numbers and supports arithmetic, bitwise operations, and more.
+
+---
+
+# Design
+
+## Operators
+
+- We use `C`/`Rust`-style operator precedence, with added support for exponentiation (`**`). Please see [here for more info on order of operations](#operators)
+- Operators with order of operations. Parentheses (`(`, `)`) are considered control tokens and do not participate in precedence.
 - Arithmetic operators (`+`, `-` <sub>(subtraction)</sub>, `*`, `/`, `%`, `**`, `-` <sub>(negation)</sub>) preserve decimal values.
   - `0.1 + 0.2 = 0.3`
   - `2 - 1.1 = 0.9`
   - `1 / 2 = 0.5`
 - Bitwise operators (`&`, `|`, `^`, `<<`, `>>`, `!`) operate on integers. **Operands are coerced into integers before the operation.**
   - `2.2 << 2 = 8` (coerced into `2 << 2`)
-
-# Operators
-
-Operators with order of operations.
 
 | Operator | Operation      | Precedence  | Arity  | Associativity |
 | -------- | -------------- | ----------- | ------ | ------------- |
@@ -37,7 +59,7 @@ Operators with order of operations.
 | `^`      | Bitwise XOR    | 2           | Binary | Left          |
 | `\|`     | Bitwise OR     | 1 (lowest)  | Binary | Left          |
 
-# Functions
+## Functions
 
 You can provide functions within an expression.
 
@@ -54,7 +76,7 @@ For example: `abs(1 + ceil(100 / 33) - (12 + 13)) / 2`
 | `tan`    | Tangent function. Computes the unit-circle y/x ratio for a given angle in radians.                                                                                                     |
 | `round`  | Rounds a number to the nearest integer value (0 decimal places). If the value is equidistant between two integers, it is rounded toward the nearest even integer (half-even rounding). |
 
-# Constants
+## Constants
 
 You can use constants within expressions. We simply replace the constant with its value.
 
@@ -62,19 +84,48 @@ You can use constants within expressions. We simply replace the constant with it
 | -------- | ----------------------------------------------------------- | ----------------------- | ----------------------------------------------------------------- |
 | `pi`     | Mathematical constant π (pi). Default precision is 64-bits. | `3.1415926535897932383` | `let precision: usize = 64;`<br>`Number::pi(precision).unwrap();` |
 
-# CLI Usage
+## Formatting
 
-| Description                                                                                      | Argument         | Shorthand |
-| ------------------------------------------------------------------------------------------------ | ---------------- | --------- |
-| Provide no arguments to enter [shell mode](#shell-mode)                                          |                  |           |
-| Provide an expression enclosed in quotes (**single quotes reccommended**) for instant evaluation | `'<expression>'` |           |
-| Display current version.                                                                         | `--version`      | `-v`      |
+### Binary Strings
 
-## Command Mode
+#### `Number::Int`
+
+We format `Number::Int` as traditional binary - just convert to a binary string. **To parse a binary string into a `Number::Int` we expect:**
+
+- The binary string to start with `0b`
+- A possible `-` sign directly following the `0b` prefix
+
+```rust
+let i = 123.to_number(); // Number::Int(123)
+let bs = format!("{i:b}"); // "1111011"
+// Parse binary string back into `Number` - needs "0b" prefix.
+let s = format!("0b{bs}");
+let n = s.parse::<Number>().unwrap(); // Number::Int(123)
+```
+
+#### `Number::Decimal`
+
+We format `Number::Decimal` by literally converting the integer part and fractional part into standalone binary strings, then joining them with a decimal. **To parse a binary string into a `Number::Decimal` we expect:**
+
+- The binary string to start with `0b`
+- A possible `-` sign directly following the `0b` prefix
+- A decimal separating the integer part from the fractional part
+
+```rust
+let i = 382.619.to_number(); // Number::Decimal(382.619)
+let bs = format!("{i:b}"); // "101111110.1001101011"
+// Parse binary string back into `Number` - needs "0b" prefix.
+let s = format!("0b{bs}");
+let n = s.parse::<Number>().unwrap(); // Number::Decimal(382.619)
+```
+
+# Examples
+
+## CLI Usage
+
+### Command Mode
 
 Command mode operates as a standard CLI interface, accepting a command and writing its output to the terminal.
-
-**Command mode examples:**
 
 ```
 $ calcinum --version
@@ -91,13 +142,11 @@ $ calcinum '!abs(-10)'
 -11
 ```
 
-## Shell Mode
+### Shell Mode
 
 Shell mode behaves like a REPL. Previous results can be interpolated into new expressions using `@N`, where `N` denotes the line number of the referenced result.
 
 Shell mode comes with a few extra commands, just type `commands` to view them.
-
-**Shell mode examples:**
 
 <img width="552" height="803" alt="Screenshot 2026-04-10 at 7 38 53 PM" src="https://github.com/user-attachments/assets/5144295a-400f-432d-80cf-ccf8206c7fff" />
 
@@ -148,13 +197,11 @@ Line '10' does not exist.
 
 </details>
 
-# Library Usage
+## Library Usage
 
-You can either work with the exposed `Number` enum directly, or use the `Calculator` struct. We recommend using the `Calculator` since it handles order of operations natively.
+### Number
 
-## Number
-
-Create `Number::Int` where calculation produces `Number::Decimal`
+**Create `Number::Int` where calculation produces `Number::Decimal`**
 
 ```rust
 use calcinum::Number;
@@ -165,7 +212,7 @@ let result = a / b;
 println!("{result:?}"); // Number::Decimal(0.5)
 ```
 
-Create `Number::Decimal`
+**Create `Number::Decimal`**
 
 ```rust
 use calcinum::Number;
@@ -180,7 +227,7 @@ result.set_scale(11); // Truncate scale, otherwise scale will be ~100 digits
 println!("{result:?}"); // Number::Decimal(4.54545454545)
 ```
 
-Convenience
+**Convenience**
 
 ```rust
 use calcinum::{Number, ToNumber};
@@ -191,11 +238,9 @@ u128::MAX.to_number(); // Number::Int(340282366920938463463374607431768211455)
 i128::MIN.to_number(); // Number::Int(-170141183460469231731687303715884105728)
 ```
 
-## Calculator
+### Calculator
 
-### Simulate Key Press
-
-You can simulate pressing keys on a calculator.
+**You can simulate pressing keys on a calculator.**
 
 ```rust
 use calcinum::{Calculator, Key};
@@ -228,7 +273,7 @@ println!("{result:?}"); // Number::Int(8)
 c.clear();
 ```
 
-Create decimals using key press
+**Create decimals using key press**
 
 ```rust
 use calcinum::{Calculator, Key};
@@ -240,9 +285,7 @@ c.press(Key::One);
 println!("{}", c.expression()); // "1.1"
 ```
 
-### Evaluate Expression
-
-Create instance with expression in one line
+**Create instance with expression in one line**
 
 ```rust
 use calcinum::Calculator;
@@ -252,7 +295,7 @@ let result = c.calculate().unwrap();
 println!("{result:?}"); // Number::Int(5)
 ```
 
-Append expression to current expression.
+**Append expression to current expression**
 
 ```rust
 use calcinum::Calculator;
@@ -264,7 +307,7 @@ c.append("*2/12-5*99");
 println!("{}", c.expression()); // "(1+1)*2/12-5*99"
 ```
 
-You can combine `append("...")` with key `press(Key::_)` in any order.
+**You can combine `append("...")` with key `press(Key::_)` in any order**
 
 ```rust
 use calcinum::{Calculator, Key};
@@ -284,7 +327,7 @@ let result = c.calculate().unwrap();
 println!("{result:?}"); // Number::Int(5)
 ```
 
-## Evaluate Expression Helper
+### Evaluate Expression Helper
 
 You can acheive the same thing via `Calculator`, granted it will be more lines of code, hence the helper.
 
