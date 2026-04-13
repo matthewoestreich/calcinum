@@ -6,33 +6,33 @@
 
 # Getting Started
 
-## Library
+Please see [here to read more about our design decisions](#design), including operators, order of operations, expression functions, expression constants, and more.
 
-You can either work directly with the `Number` enum, use the `Calculator` struct, or simply evaluate expressions with the exposed `calcinum::eval` function.
+## Library
 
 Please see [Library Usage](#library-usage) for examples
 
-- The `calcinum::eval` function evaluates expressions without any bells or whistles.
-- The `Calculator` behaves like a traditional calculator—it evaluates expressions while correctly handling operator precedence.
-  - This makes it easy to input and compute expressions without worrying about the underlying parsing or evaluation logic.
-- The `Number` enum represents numeric values.
-  - It provides a flexible type for working with arbitrarily large numbers and supports arithmetic, bitwise operations, and more.
+| Use                                       | For                                                                                                                                                         |
+| ----------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`calcinum::eval`](#evaluate-expressions) | Evaluating expressions while correctly handling operator precedence without any bells or whistles                                                           |
+| [`calcinum::Number`](#number)             | Working with arbitrary numeric values with support for arithmetic, bitwise operations, and more                                                             |
+| [`calcinum::Calculator`](#calculator)     | Traditional calculator behavior - simulate pressing buttons or entering expressions - it evaluates expressions while correctly handling operator precedence |
 
 ## CLI
 
-There are two modes; [command mode](#command-mode) and [shell mode](#shell-mode). Please see [CLI Usage](#cli-usage) for examples.
+Please see [CLI Usage](#cli-usage) for examples.
 
-| Description                                                                                      | Argument         | Shorthand |
-| ------------------------------------------------------------------------------------------------ | ---------------- | --------- |
-| Provide no arguments to enter [shell mode](#shell-mode)                                          |                  |           |
-| Provide an expression enclosed in quotes (**single quotes reccommended**) for instant evaluation | `'<expression>'` |           |
-| Display current version.                                                                         | `--version`      | `-v`      |
+| Argument         | Shorthand | Description                                                                                                                             |
+| ---------------- | --------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+|                  |           | Provide no arguments to enter [shell mode](#shell-mode)                                                                                 |
+| `'<expression>'` |           | Provide an expression enclosed in quotes (**single quotes recommended**) for instant evaluation - used in [command mode](#command-mode) |
+| `--version`      | `-v`      | Display current version - used in [command mode](#command-mode)                                                                         |
 
 ---
 
 # Design
 
-## Operators
+## Important Info
 
 - We use `C`/`Rust`-style operator precedence, with added support for exponentiation (`**`). Please see [here for more info on order of operations](#operators)
 - Parentheses (`(`, `)`) are considered control tokens and do not participate in precedence.
@@ -42,6 +42,8 @@ There are two modes; [command mode](#command-mode) and [shell mode](#shell-mode)
   - `1 / 2 = 0.5`
 - Bitwise operators (`&`, `|`, `^`, `<<`, `>>`, `!`) operate on integers. **Operands are coerced into integers before the operation.**
   - `2.2 << 2 = 8` (coerced into `2 << 2`)
+
+## Operators
 
 | Operator | Operation      | Precedence  | Arity  | Associativity |
 | -------- | -------------- | ----------- | ------ | ------------- |
@@ -61,9 +63,7 @@ There are two modes; [command mode](#command-mode) and [shell mode](#shell-mode)
 
 ## Functions
 
-You can provide functions within an expression.
-
-To call a function, type the function name, followed by an open parentheses, then the expression you'd like to evaluate, and finally a closing parentheses.
+You can provide functions within an expression. To call a function, type the function name, followed by an open parentheses, then the expression you'd like to evaluate, and finally a closing parentheses.
 
 For example: `abs(1 + ceil(100 / 33) - (12 + 13)) / 2`
 
@@ -80,9 +80,9 @@ For example: `abs(1 + ceil(100 / 33) - (12 + 13)) / 2`
 
 You can use constants within expressions. We simply replace the constant with its value.
 
-| Constant | Definition                                                  | Value                   | Library Usage                                                     |
-| -------- | ----------------------------------------------------------- | ----------------------- | ----------------------------------------------------------------- |
-| `pi`     | Mathematical constant π (pi). Default precision is 64-bits. | `3.1415926535897932383` | `let precision: usize = 64;`<br>`Number::pi(precision).unwrap();` |
+| Constant | Definition                                                  | Value                   |
+| -------- | ----------------------------------------------------------- | ----------------------- |
+| `pi`     | Mathematical constant π (pi). Default precision is 64-bits. | `3.1415926535897932383` |
 
 ## Formatting
 
@@ -90,10 +90,10 @@ You can use constants within expressions. We simply replace the constant with it
 
 #### `Number::Int`
 
-We format `Number::Int` as traditional binary - just convert to a binary string. **To parse a binary string into a `Number::Int` we expect:**
+We format `Number::Int` as traditional binary - simply convert to a binary string. **To parse a binary string into a `Number::Int` we expect:**
 
 - The binary string to start with `0b`
-- A possible `-` sign directly following the `0b` prefix
+- Optional `-` sign (for negative numbers) directly following the `0b` prefix
 
 ```rust
 let i = 123.to_number(); // Number::Int(123)
@@ -108,7 +108,7 @@ let n = s.parse::<Number>().unwrap(); // Number::Int(123)
 We format `Number::Decimal` by literally converting the integer part and fractional part into standalone binary strings, then joining them with a decimal. **To parse a binary string into a `Number::Decimal` we expect:**
 
 - The binary string to start with `0b`
-- A possible `-` sign directly following the `0b` prefix
+- Optional `-` sign (for negative numbers) directly following the `0b` prefix
 - A decimal separating the integer part from the fractional part
 
 ```rust
@@ -327,7 +327,7 @@ let result = c.calculate().unwrap();
 println!("{result:?}"); // Number::Int(5)
 ```
 
-### Evaluate Expression Helper
+### Evaluate Expressions
 
 You can acheive the same thing via `Calculator`, granted it will be more lines of code, hence the helper.
 
