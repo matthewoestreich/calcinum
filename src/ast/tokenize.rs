@@ -83,16 +83,14 @@ fn op_has_two_chars(first_char: &char, second_char: &char) -> bool {
 /// Could be a function (like `sin`, `abs`, etc..),
 /// or a constant (like `pi`) we don't know which yet.
 fn read_identifier(c: &char, iter: &mut iter::Peekable<Chars>) -> String {
-    let mut fn_name_str = String::from(*c);
-
+    let mut name = String::from(*c);
     while let Some(&p) = iter.peek()
         && p.is_ascii_alphabetic()
     {
-        fn_name_str.push(p);
+        name.push(p);
         iter.next();
     }
-
-    fn_name_str
+    name
 }
 
 fn read_and_tokenize_number(
@@ -100,14 +98,12 @@ fn read_and_tokenize_number(
     iter: &mut iter::Peekable<Chars>,
 ) -> Result<Number, ParserError> {
     let mut num_str = String::from(*c);
-
     while let Some(&p) = iter.peek()
         && (p.is_ascii_digit() || p == '.')
     {
         num_str.push(p);
         iter.next();
     }
-
     num_str
         .parse::<Number>()
         .map_err(|_| ParserError::InvalidNumber(num_str))
