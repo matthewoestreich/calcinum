@@ -24,14 +24,12 @@ pub fn parse(infix_tokens: Vec<Token>) -> Result<Vec<Token>, ParserError> {
                         has_open_paren = true;
                         break;
                     }
-
                     output.push(t);
                 }
 
                 if !has_open_paren {
                     return Err(ParserError::MissingOpeningParentheses);
                 }
-
                 if matches!(stack.last(), Some(Token::Function(_))) {
                     output.push(stack.pop().expect("just verified .last"));
                 }
@@ -44,7 +42,6 @@ pub fn parse(infix_tokens: Vec<Token>) -> Result<Vec<Token>, ParserError> {
                     if matches!(top, Token::ParenthesesOpen) {
                         break;
                     }
-
                     let top_precedence = top.precedence();
                     if match associativity {
                         Associativity::Left => precedence > top_precedence,
@@ -52,7 +49,6 @@ pub fn parse(infix_tokens: Vec<Token>) -> Result<Vec<Token>, ParserError> {
                     } {
                         break;
                     }
-
                     output.push(stack.pop().expect("valid while condition"));
                 }
 
@@ -67,7 +63,6 @@ pub fn parse(infix_tokens: Vec<Token>) -> Result<Vec<Token>, ParserError> {
         }
         output.push(p);
     }
-
     Ok(output)
 }
 
