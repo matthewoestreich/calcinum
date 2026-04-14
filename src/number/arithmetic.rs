@@ -68,6 +68,31 @@ impl Number {
 
         Ok(result)
     }
+
+    /// Returns the quotient and remainder as a tuple, e.g., `(quotient, remainder)`
+    ///
+    /// ```rust
+    /// use calcinum::Number;
+    ///
+    /// let dividend = Number::from(10);
+    /// let divisor = 7;
+    /// let (expect_quotient, expect_remainder) = (Number::from(1), Number::from(3));
+    /// let (result_quotient, result_remainder) = dividend.div_mod(divisor);
+    /// assert_eq!(
+    ///     (expect_quotient, expect_remainder),
+    ///     (result_quotient, result_remainder),
+    /// );
+    /// ```
+    pub fn div_mod<T>(&self, rhs: T) -> (Number, Number)
+    where
+        T: Into<Number>,
+    {
+        let rhs = rhs.into();
+        let remainder = self % &rhs;
+        let mut quotient = (self / &rhs).floor();
+        quotient.demote(); // Turn a whole number `Decimal` variant into `Int` variant.
+        (quotient, remainder)
+    }
 }
 
 // ===========================================================================================

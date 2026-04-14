@@ -1,4 +1,4 @@
-use crate::Number;
+use crate::{Number, number::nibble::Nibble};
 use std::fmt;
 
 // ===========================================================================================
@@ -41,20 +41,27 @@ impl Number {
     /// assert_eq!(format!("{number:b}"), expect);
     /// ```
     pub fn to_binary_str(&self) -> String {
-        match self {
-            Number::Int(i) => format!("{i:b}"),
-            Number::Decimal(d) => {
-                let s = d.to_string();
-                let (int_part, fract_part) = s.split_once('.').unwrap_or((&s, ""));
+        format!("{self:b}")
+    }
 
-                match Self::decimal_str_to_binary_str(int_part) {
-                    Some(int_part_bin) => match Self::decimal_str_to_binary_str(fract_part) {
-                        Some(fract_part_bin) => format!("{int_part_bin}.{fract_part_bin}"),
-                        None => int_part_bin,
-                    },
-                    None => String::new(),
-                }
-            }
+    /// Formats `self` as it's hexadecimal representation.
+    ///
+    /// We format decimals that contain a fractional part literally. Meaning, we format
+    /// the integer part and fractional part separately, then combine them via a decimal
+    /// while preserving the sign.
+    ///
+    /// ```rust
+    /// use calcinum::Number;
+    ///
+    /// let n = "-123.123".parse::<Number>().expect("Number::Decimal");
+    /// assert_eq!(n.to_hex_str(true) "-7B.7B".to_string());
+    /// assert_eq!(n.to_hex_str(false), "-7b.7b".to_string());
+    /// ```
+    pub fn to_hex_str(&self, uppercase: bool) -> String {
+        if uppercase {
+            format!("{self:X}")
+        } else {
+            format!("{self:x}")
         }
     }
 
@@ -134,6 +141,38 @@ impl Number {
         }
 
         true
+    }
+
+    fn decimal_str_to_hexadecimal_str(dec_str: &str, uppercase: bool) -> Option<String> {
+        if !Self::is_decimal_str(dec_str) {
+            return None;
+        }
+
+        let (sign, dec_str) = if let Some(digits) = dec_str.strip_prefix('-') {
+            ("-", digits)
+        } else {
+            ("", dec_str)
+        };
+
+        let mut dividend = dec_str.parse::<Number>().ok()?;
+        let mut hex_str = String::new();
+
+        loop {
+            let (quotient, remainder) = dividend.div_mod(16);
+            // Divisor is 16 - remainder will always fit in a Nibble
+            let remainder_nibble = Nibble::from_str_unchecked(&remainder.to_string());
+            hex_str.push_str(&remainder_nibble.to_hex(uppercase));
+
+            if quotient.is_zero() {
+                break;
+            }
+
+            // Use quotient as new dividend.
+            dividend = quotient;
+        }
+
+        hex_str.push_str(sign);
+        Some(hex_str.chars().rev().collect())
     }
 
     /// Converts a decimal string into it's binary string representation.
@@ -218,7 +257,65 @@ impl fmt::Debug for Number {
 
 impl fmt::Binary for Number {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.to_binary_str())
+        match self {
+            Number::Int(i) => write!(f, "{i:b}"),
+            Number::Decimal(d) => {
+                let s = d.to_string();
+                let (int_part, fract_part) = s.split_once('.').unwrap_or((&s, ""));
+
+                match Self::decimal_str_to_binary_str(int_part) {
+                    Some(int_part_bin) => match Self::decimal_str_to_binary_str(fract_part) {
+                        Some(fract_part_bin) => write!(f, "{int_part_bin}.{fract_part_bin}"),
+                        None => write!(f, "{int_part_bin}"),
+                    },
+                    None => write!(f, "{d}"),
+                }
+            }
+        }
+    }
+}
+
+impl fmt::LowerHex for Number {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Number::Int(i) => fmt::LowerHex::fmt(i, f),
+            Number::Decimal(d) => {
+                let d_str = d.to_plain_string();
+                let (int_part, fract_part) = d_str.split_once('.').unwrap_or((&d_str, ""));
+
+                match Self::decimal_str_to_hexadecimal_str(int_part, false) {
+                    Some(int_part_hex) => {
+                        match Self::decimal_str_to_hexadecimal_str(fract_part, false) {
+                            Some(fract_part_hex) => write!(f, "{int_part_hex}.{fract_part_hex}"),
+                            None => write!(f, "{int_part_hex}"),
+                        }
+                    }
+                    None => write!(f, "{d}"),
+                }
+            }
+        }
+    }
+}
+
+impl fmt::UpperHex for Number {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Number::Int(i) => fmt::UpperHex::fmt(i, f),
+            Number::Decimal(d) => {
+                let d_str = d.to_plain_string();
+                let (int_part, fract_part) = d_str.split_once('.').unwrap_or((&d_str, ""));
+
+                match Self::decimal_str_to_hexadecimal_str(int_part, true) {
+                    Some(int_part_hex) => {
+                        match Self::decimal_str_to_hexadecimal_str(fract_part, true) {
+                            Some(fract_part_hex) => write!(f, "{int_part_hex}.{fract_part_hex}"),
+                            None => write!(f, "{int_part_hex}"),
+                        }
+                    }
+                    None => write!(f, "{d}"),
+                }
+            }
+        }
     }
 }
 
@@ -543,5 +640,43 @@ mod test {
             expect, br,
             "[n.to_binary_str()] expected '{expect}' got '{br}'"
         );
+    }
+
+    #[rstest]
+    #[case::to_hex_str2("0", "0", true)]
+    #[case::to_hex_str3("1", "1", true)]
+    #[case::to_hex_str4("10", "A", true)]
+    #[case::to_hex_str5("15", "F", true)]
+    #[case::to_hex_str6("16", "10", true)]
+    #[case::to_hex_str7("255", "FF", true)]
+    #[case::to_hex_str8("256", "100", true)]
+    #[case::to_hex_str9("-1", "-1", true)]
+    #[case::to_hex_str10("-255", "-FF", true)]
+    #[case::to_hex_str11("123", "7b", false)]
+    #[case::to_hex_str12("4095", "FFF", true)]
+    #[case::to_hex_str13("4096", "1000", true)]
+    #[case::to_hex_str14("65535", "FFFF", true)]
+    #[case::to_hex_str15("65536", "10000", true)]
+    #[case::to_hex_str16("4294967295", "FFFFFFFF", true)]
+    #[case::to_hex_str17("4294967296", "100000000", true)]
+    #[case::to_hex_str18("-4095", "-FFF", true)]
+    #[case::to_hex_str19("123456789", "75BCD15", true)]
+    #[case::to_hex_str20("123456789", "75bcd15", false)]
+    #[case::to_hex_str21("-123.123", "-7B.7B", true)]
+    #[case::to_hex_str22("0.5", "0.5", true)]
+    #[case::to_hex_str23("1.5", "1.5", true)]
+    #[case::to_hex_str24("10.25", "A.19", true)]
+    #[case::to_hex_str25("15.5", "F.5", true)]
+    #[case::to_hex_str26("16.75", "10.4B", true)]
+    #[case::to_hex_str27("255.5", "FF.5", true)]
+    #[case::to_hex_str28("-0.5", "-0.5", true)]
+    #[case::to_hex_str29("-10.25", "-A.19", true)]
+    #[case::to_hex_str30("1.5", "1.5", false)]
+    #[case::to_hex_str31("10.25", "a.19", false)]
+    fn number_to_hex_str(#[case] number: &str, #[case] expect: &str, #[case] uppercase: bool) {
+        let n = number.parse::<Number>().expect("Number::<t>");
+        let e = expect.to_string();
+        let r = n.to_hex_str(uppercase);
+        assert_eq!(r, e, "expected hex '{e}' got hex '{r}'");
     }
 }
