@@ -98,7 +98,7 @@ impl Context {
                 if let Some(sep) = bin_fmt_separator {
                     let n = r.format(Formatting::Binary {
                         separator: sep.to_string(),
-                        grouping: bin_fmt_grouping,
+                        group_by: bin_fmt_grouping,
                     });
                     println_green!("{n}");
                 }

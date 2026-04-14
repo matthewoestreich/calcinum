@@ -6,40 +6,157 @@ use std::fmt;
 // ===========================================================================================
 
 impl Number {
+    /// Applies custom formatting logic.
+    /// See [Formatting] for more information.
+    ///
+    /// ```rust
+    /// use calcinum::{Number, Formatting};
+    ///
+    /// let n = "123.456".parse::<Number>().expect("Number::Decimal");
+    /// let fmt = n.format(Formatting::Decimal { scale: 1 });
+    /// assert_eq!(fmt, "123.4".to_string());
+    /// ```
+    ///
+    /// See [`Formatting` variants](crate::Formatting#variants) for more examples.
     pub fn format(&self, formatting: Formatting) -> String {
         formatting.apply(self)
     }
 
-    /// If variant is `Number::Decimal` we return the integer part is binary
-    /// and the fractional part as binary, separated by a period.
-    /// For example, if you have a `Number::Decimal(100.773)` this method
-    /// returns : `"1100100.1100000101"`
+    /// Formats `self` as it's binary string represenation.
+    /// **If we are unable to convert the integer part to a binary string we return an empty string.**
+    /// **If we are unable to convert the fractional part (if one exists) we only return the integer part**
+    ///
+    /// We format decimals that contain a fractional part literally. Meaning, we format
+    /// the integer part and fractional part separately, then combine them via a decimal
+    /// while preserving the sign.
+    ///
+    /// ```rust
+    /// use calcinum::Number;
+    ///
+    /// let number = "-123.123".parse::<Number>().expect("Number::Decimal");
+    /// let expect = "-1111011.1111011".to_string();
+    /// let number_bin = number.to_binary_str();
+    /// assert_eq!(number_bin, expect);
+    /// // We use this method in the [`fmt::Binary`] impl as well.
+    /// assert_eq!(format!("{number:b}"), expect);
+    /// ```
     pub fn to_binary_str(&self) -> String {
         match self {
             Number::Int(i) => format!("{i:b}"),
             Number::Decimal(d) => {
                 let s = d.to_string();
                 let (int_part, fract_part) = s.split_once('.').unwrap_or((&s, ""));
-                let mut bin_str = Self::decimal_str_to_binary_str(int_part);
 
-                if !fract_part.is_empty() {
-                    let fract_bin = Self::decimal_str_to_binary_str(fract_part);
-                    bin_str.push_str(&format!(".{fract_bin}"));
+                match Self::decimal_str_to_binary_str(int_part) {
+                    Some(int_part_bin) => match Self::decimal_str_to_binary_str(fract_part) {
+                        Some(fract_part_bin) => format!("{int_part_bin}.{fract_part_bin}"),
+                        None => int_part_bin,
+                    },
+                    None => String::new(),
                 }
-
-                bin_str
             }
         }
     }
 
+    /// We expect a binary string to start with `"0b"`.
+    /// A binary string can contain:
+    /// - Digits `0` or `1`.
+    /// - A single negative sign, e.g., `-`, required to be at the start of the string, after the `"0b"` prefix.
+    /// - A decimal, e.g., `.` to denote a fractional number in binary form.
     pub(crate) fn is_binary_str(s: &str) -> bool {
-        s.starts_with("0b")
+        if !s.starts_with("0b") || s.is_empty() {
+            return false;
+        }
+
+        let rest = s.trim_start_matches("0b");
+        let mut iter = rest.chars();
+        let mut seen_decimal = false;
+
+        if rest.starts_with('-') {
+            iter.next();
+        }
+
+        for c in iter {
+            match c {
+                // We should not see any other '-' signs.
+                '-' => return false,
+                '.' => {
+                    if seen_decimal {
+                        return false;
+                    }
+                    seen_decimal = true;
+                }
+                _ => {
+                    if c != '0' && c != '1' {
+                        return false;
+                    }
+                }
+            }
+        }
+
+        true
     }
 
-    // Helper for `.to_binary_str`
-    fn decimal_str_to_binary_str(decimal_str: &str) -> String {
+    /// Checks to see if a string is considered a decimal.
+    /// An empty decimal string returns `false`.
+    /// We expect a decimal string to contain only:
+    /// - Digits `0`-`9`.
+    /// - A single negative sign, e.g., `-`, required to be at the start of the string.
+    /// - A decimal, e.g., `.` to denote a decimal with a fractional part.
+    pub(crate) fn is_decimal_str(s: &str) -> bool {
+        if s.is_empty() {
+            return false;
+        }
+
+        let mut iter = s.chars();
+        let mut seen_decimal = false;
+
+        if s.starts_with('-') {
+            iter.next();
+        }
+
+        for c in iter {
+            match c {
+                // We should not see any other '-' signs.
+                '-' => return false,
+                '.' => {
+                    if seen_decimal {
+                        return false;
+                    }
+                    seen_decimal = true;
+                }
+                _ => {
+                    if !c.is_ascii_digit() {
+                        return false;
+                    }
+                }
+            }
+        }
+
+        true
+    }
+
+    /// Converts a decimal string into it's binary string representation.
+    /// Returns `None` if `decimal_str` is not considered to be a valid decimal string.
+    /// **Empty strings are allowed, we simply return `Some(String::from("0"))`.**
+    /// A valid decimal string meets the following requirements:
+    /// - May contain a negative sign, e.g., `-` at the start of the string.
+    /// - May contain a single decimal, e.g., '.'.
+    /// - Outside of '-' or '.', can only contain digits '0'-'9'.
+    ///
+    /// We format decimals that contain a fractional part literally. Meaning, we format
+    /// the integer part and fractional part separately, then combine them via a decimal
+    /// while preserving the sign.
+    fn decimal_str_to_binary_str(decimal_str: &str) -> Option<String> {
         if decimal_str == "0" || decimal_str.is_empty() {
-            return "0".to_string();
+            return Some("0".to_string());
+        }
+        if !Self::is_decimal_str(decimal_str) {
+            // Since `is_decimal_str` will return `false` for empty strings, but we want to
+            // allow empty strings, we only return `None` if the string is not actually empty.
+            if !decimal_str.is_empty() {
+                return None;
+            }
         }
         let is_negative = decimal_str.starts_with('-');
         let decimal_str = decimal_str.trim_start_matches('-');
@@ -48,7 +165,7 @@ impl Number {
             if let Some(d) = c.to_digit(10) {
                 digits.push(d as u8);
             } else {
-                return format!("<INVALID_DIGIT_FOUND = '{c}'>");
+                return None;
             }
         }
         let mut binary_bits = String::new();
@@ -73,7 +190,7 @@ impl Number {
             binary_bits.push('-');
         }
         // Reverse to get the correct order (MSB first)
-        binary_bits.chars().rev().collect()
+        Some(binary_bits.chars().rev().collect())
     }
 }
 
@@ -109,39 +226,81 @@ impl fmt::Binary for Number {
 // ========================== Formatting =====================================================
 // ===========================================================================================
 
+/// [`Number`] can contain arbitrarily sized numbers, so we cannot use the built-in formatting.
 pub enum Formatting {
-    /// How many digits to show after the decimal
-    Decimal { keep_n_decimal_digits: usize },
-    /// How many total digits to show. Symbols like `-` and `.` do not
-    /// count towards digit count.
-    /// If you have a decimal, `12345.678` and you format with `Digits { keep_n_digits: 6 }`
-    /// the output will be `12345.6`.
-    Digits { keep_n_digits: usize },
-    /// Format as binary with separator and grouping.
-    /// e.g., `1101011010101101010000011100101` using `Binary { separator: "x", grouping: 4 }` will
-    /// output `1101x0110x1010x1101x0100x0001x1100x101`.
-    /// e.g., `1101011010101101010000011100101` using Binary { separator: " ", grouping: 8 }` will
-    /// output `11010110 10101101 01000001 1100101`.
-    Binary { separator: String, grouping: usize },
+    /// How many digits to show after the decimal.
+    ///
+    /// ```rust
+    /// use calcinum::{Number, Formatting};
+    ///
+    /// let number = "12.3456789".parse::<Number>().expect("Number::Decimal");
+    /// let expect = "12.3456".to_string();
+    /// let format = Formatting::Decimal { scale: 4 };
+    /// let formatted = format.apply(&number);
+    /// assert_eq!(formatted, expect);
+    /// // Can also use the [`.format(...)`] method on instances of [`Number`].
+    /// let formatted = number.format(format);
+    /// assert_eq!(formatted, expect);
+    /// ```
+    Decimal { scale: usize },
+
+    /// How many total digits to show. Symbols like `-` and `.` do not effect digit count.
+    ///
+    /// ```rust
+    /// use calcinum::{Number, Formatting};
+    ///
+    /// let number = "12345.678".parse::<Number>().expect("Number::Decimal");
+    /// let expect = "12345.6".to_string();
+    /// let format = Formatting::Digits { width: 6 };
+    /// let formatted = format.apply(&number);
+    /// assert_eq!(formatted, expect);
+    /// // Can also use the [`.format(...)`] method on instances of [`Number`].
+    /// let formatted = number.format(format);
+    /// assert_eq!(formatted, expect);
+    /// ```
+    Digits { width: usize },
+
+    /// Format as binary string with separator and group_by chunks.
+    /// Formats decimals with a fractional part literally. Meaning, we format each side of
+    /// the decimal separately, then combine them via a decimal.
+    ///
+    /// `separator` : delimiter used to separate groups.
+    /// `group_by` : how many binary digits that will appear consecutively before a `separator`.
+    ///
+    /// ```rust
+    /// use calcinum::{Number, Formatting};
+    ///
+    /// let number = Number::from(u64::MAX);
+    /// let expect = String::from("11111111 11111111 11111111 11111111 11111111 11111111 11111111 11111111");
+    /// let format = Formatting::Binary {
+    ///     separator: " ".to_string(),
+    ///     group_by: 8,
+    /// };
+    /// let formatted = format.apply(&number);
+    /// assert_eq!(formatted, expect);
+    /// let formatted = number.format(format);
+    /// assert_eq!(formatted, expect);
+    /// ````
+    Binary { separator: String, group_by: usize },
 }
 
 impl Formatting {
+    /// Formats a [`Number`] with `self` formatting.
+    /// See the documentation for [`Formatting` variants](crate::Formatting#variants) for more details.
     pub fn apply(&self, number: &Number) -> String {
         match self {
-            Formatting::Decimal {
-                keep_n_decimal_digits,
-            } => Self::apply_decimal_digits_formatting(number, *keep_n_decimal_digits),
+            Formatting::Decimal { scale: precision } => {
+                Self::apply_decimal_digits_formatting(number, *precision)
+            }
             Formatting::Binary {
                 separator,
-                grouping,
+                group_by: grouping,
             } => Self::apply_binary_formatting(number, separator, *grouping),
-            Formatting::Digits { keep_n_digits } => {
-                Self::apply_digits_formatting(number, *keep_n_digits)
-            }
+            Formatting::Digits { width } => Self::apply_digits_formatting(number, *width),
         }
     }
 
-    fn apply_decimal_digits_formatting(number: &Number, keep_n_decimal_digits: usize) -> String {
+    fn apply_decimal_digits_formatting(number: &Number, precision: usize) -> String {
         let num_str = number.to_string();
 
         if number.is_int() {
@@ -150,25 +309,25 @@ impl Formatting {
 
         let (int_part, fract_part) = num_str.split_once('.').unwrap_or((&num_str, ""));
 
-        if keep_n_decimal_digits == 0 {
+        if precision == 0 {
             return int_part.to_string();
         }
 
-        if fract_part.len() <= keep_n_decimal_digits {
+        if fract_part.len() <= precision {
             return num_str;
         }
 
-        let truncated = &fract_part[..keep_n_decimal_digits];
+        let truncated = &fract_part[..precision];
         format!("{int_part}.{truncated}")
     }
 
-    fn apply_digits_formatting(number: &Number, keep_n_digits: usize) -> String {
+    fn apply_digits_formatting(number: &Number, width: usize) -> String {
         let num_str = number.to_string();
         let mut fmted = String::new();
         let mut seen_digits = 0;
 
         for c in num_str.chars() {
-            if seen_digits >= keep_n_digits {
+            if seen_digits >= width {
                 break;
             }
 
@@ -197,16 +356,7 @@ impl Formatting {
     }
 
     /// Assumes you have alredy verified the `bin_str` you are passing in is binary.
-    /// Accounts for negative binary strings ('-' at start of string).
-    ///
-    /// ```rust
-    /// let bin_str = "1111111111";
-    /// let separator = "_";
-    /// let grouping = 8;
-    ///
-    /// let formatted = format_binary_str(bin_str, separator, grouping);
-    /// assert_eq!(formatted, "00000011_11111111".to_string());
-    /// ````
+    /// Handles negative binary strings ('-' at start of string).
     fn format_binary_str(bin_str: &str, separator: &str, grouping: usize) -> String {
         if bin_str.is_empty() {
             return String::new();
@@ -243,12 +393,6 @@ impl Formatting {
 
     /// Finds the next multiple, `m`,  for an unsigned size, `n`.
     /// If `n` is already a multiple of `m`, we return `n`.
-    ///
-    /// ```rust
-    /// // Get the next multiple of 3 starting from 34.
-    /// let ans = next_pos_multiple(3, 34);
-    /// assert_eq!(ans, 36);
-    /// ````
     fn next_pos_multiple_inclusive(m: usize, n: usize) -> usize {
         if n.is_multiple_of(m) {
             return n;
@@ -289,15 +433,9 @@ mod test {
     #[case::formatting_decimals1("-12345.6789", 2, "-12345.67")]
     #[case::formatting_decimals2("12345.6", 0, "12345")]
     #[case::formatting_decimals3("12345.6789", 20, "12345.6789")]
-    fn formatting_decimals(
-        #[case] number: &str,
-        #[case] keep_n_decimal_digits: usize,
-        #[case] expect: &str,
-    ) {
+    fn formatting_decimals(#[case] number: &str, #[case] scale: usize, #[case] expect: &str) {
         let n = number.parse::<Number>().unwrap();
-        let decimals = n.format(Formatting::Decimal {
-            keep_n_decimal_digits,
-        });
+        let decimals = n.format(Formatting::Decimal { scale });
         assert_eq!(
             decimals, expect,
             "expected decimals '{expect}' got decimals '{decimals}'"
@@ -306,9 +444,9 @@ mod test {
 
     #[rstest]
     #[case::formatting_digits1("-12345.6789", 7, "-12345.67")]
-    fn formatting_digits(#[case] number: &str, #[case] keep_n_digits: usize, #[case] expect: &str) {
+    fn formatting_digits(#[case] number: &str, #[case] width: usize, #[case] expect: &str) {
         let n = number.parse::<Number>().expect("number str to Number");
-        let digits = n.format(Formatting::Digits { keep_n_digits });
+        let digits = n.format(Formatting::Digits { width });
         assert_eq!(
             digits, expect,
             "expected digits '{expect}' got digits '{digits}'"
@@ -332,13 +470,13 @@ mod test {
     fn formatting_binary(
         #[case] number: &str,
         #[case] separator: &str,
-        #[case] grouping: usize,
+        #[case] group_by: usize,
         #[case] expect: &str,
     ) {
         let n = number.parse::<Number>().expect("number str to Number");
         let binary = n.format(Formatting::Binary {
             separator: separator.to_string(),
-            grouping,
+            group_by,
         });
         assert_eq!(
             binary, expect,
