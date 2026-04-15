@@ -12,7 +12,7 @@ impl Number {
     /// use calcinum::{Number, NumberError};
     ///
     /// let mut x = Number::from(1);
-    /// let mut y = Number::ZERO;
+    /// let y = Number::ZERO;
     /// assert_eq!(x.try_div_assign(&y), Err(NumberError::DivisionByZero));
     /// ```
     pub fn try_div_assign(&mut self, rhs: &Number) -> Result<(), NumberError> {
@@ -51,7 +51,7 @@ impl Number {
     /// use calcinum::{Number, NumberError};
     ///
     /// let mut x = Number::from(1);
-    /// let mut y = Number::ZERO;
+    /// let y = Number::ZERO;
     /// assert_eq!(x.try_div(&y), Err(NumberError::DivisionByZero));
     /// ```
     pub fn try_div(&self, rhs: &Number) -> Result<Number, NumberError> {
@@ -106,7 +106,9 @@ impl Number {
         let rhs = rhs.into();
         let remainder = self % &rhs;
         let mut quotient = (self / &rhs).floor();
-        quotient.demote(); // Turn a whole number `Decimal` variant into `Int` variant.
+        // If the quotient is a whole number, this will change the variant
+        // from `Number::Decimal(_)` to `Number::Int(_)`.
+        quotient.demote();
         (quotient, remainder)
     }
 }

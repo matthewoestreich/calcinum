@@ -11,10 +11,11 @@ impl Number {
     /// ```rust
     /// use calcinum::Number;
     ///
-    /// let n = Number::from(10);
-    /// assert_eq!(n.to_i64(), Some(10i64));
-    /// let n = Number::from(i128::MAX);
-    /// assert_eq!(n.to_i64(), None);
+    /// let a = Number::from(10);
+    /// assert_eq!(a.to_i64(), Some(10i64));
+    ///
+    /// let b = Number::from(i128::MAX);
+    /// assert_eq!(b.to_i64(), None);
     /// ```
     pub fn to_i64(&self) -> Option<i64> {
         match self {
@@ -37,10 +38,12 @@ impl Number {
     ///
     /// let a = Number::from(i128::MAX);
     /// assert_eq!(a.to_i64_saturating(), i64::MAX);
+    ///
     /// let b = Number::from(i128::MIN);
     /// assert_eq!(b.to_i64_saturating(), i64::MIN);
+    ///
     /// let c = "123.123".parse::<Number>().expect("Number::Decimal");
-    /// assert!(matches!(c, Number::Decimal(_)));
+    /// assert!(c.is_decimal());
     /// assert_eq!(c.to_i64_saturating(), 123i64);
     /// ````
     pub fn to_i64_saturating(&self) -> i64 {
@@ -58,6 +61,7 @@ impl Number {
     ///
     /// let a = Number::from(10);
     /// assert_eq!(a.to_i32(), Some(10i32));
+    ///
     /// let b = Number::from(i64::MAX);
     /// assert_eq!(b.to_i32(), None);
     /// ```
@@ -76,6 +80,7 @@ impl Number {
     ///
     /// let a = Number::from(10);
     /// assert_eq!(a.to_i128(), Some(10i128));
+    ///
     /// let b = Number::from(u128::MAX);
     /// assert_eq!(b.to_i128(), None);
     /// ```
@@ -100,11 +105,15 @@ impl Number {
     ///
     /// let a = Number::from(i128::MAX);
     /// assert_eq!(a.to_i128_saturating(), i128::MAX);
+    ///
     /// let b = Number::from(i128::MIN);
     /// assert_eq!(b.to_i128_saturating(), i128::MIN);
+    ///
     /// // `u128::MAX` as decimal with fractional part.
-    /// let c = "340282366920938463463374607431768211455.123456789".parse::<Number>().expect("Number::Decimal");
-    /// assert!(matches!(c, Number::Decimal(_)));
+    /// let c = "340282366920938463463374607431768211455.123456789"
+    ///     .parse::<Number>()
+    ///     .expect("Number::Decimal");
+    /// assert!(c.is_decimal());
     /// assert_eq!(c.to_i128_saturating(), i128::MAX);
     /// ````
     pub fn to_i128_saturating(&self) -> i128 {
@@ -375,6 +384,7 @@ impl Number {
 // ========================== ToNumber =======================================================
 // ===========================================================================================
 
+/// Implementors know how to become a `Number`.
 pub trait ToNumber {
     fn to_number(&self) -> Number;
 }

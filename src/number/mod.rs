@@ -18,6 +18,7 @@ use std::{cell::RefCell, cmp::Ordering};
 pub use conversion::ToNumber;
 pub use format::Formatting;
 
+/// Arbitrary-precision numeric system supporting integers, decimals, and binary-aware arithmetic.
 #[derive(Clone)]
 pub enum Number {
     Int(BigInt),
@@ -97,6 +98,7 @@ impl Number {
 // ========================== NumberOrder ====================================================
 // ===========================================================================================
 
+/// The order, or rank, of `Number` variants.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum NumberOrder {
     Int,

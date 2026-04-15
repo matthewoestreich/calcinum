@@ -3,6 +3,7 @@ use bigdecimal::ParseBigDecimalError;
 use num_bigint::ParseBigIntError;
 use std::{error, fmt};
 
+/// Error type for [`Number`](crate::Number).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum NumberError {
     Parsing { value: String },

@@ -4,16 +4,30 @@ use crate::{
 };
 use std::{error, fmt};
 
+/// Traditional calculator behavior.
 #[derive(Default, Debug, Clone)]
 pub struct Calculator {
     expression: String,
 }
 
 impl Calculator {
+    /// Create a new calculator instance.
+    ///
+    /// ```rust
+    /// calcinum::Calculator::new();
+    /// ```
     pub fn new() -> Self {
         Self::default()
     }
 
+    /// Create a new calculator instance with expression.
+    ///
+    /// ```rust
+    /// use calcinum::{Number, Calculator};
+    ///
+    /// let mut c = Calculator::new_with_expression("1+1");
+    /// assert_eq!(c.calculate(), Ok(Number::from(2)));
+    /// ```
     pub fn new_with_expression(infix: &str) -> Self {
         Self {
             expression: infix.to_string(),
@@ -21,23 +35,55 @@ impl Calculator {
     }
 
     /// Returns clone of current expression
+    ///
+    /// ```rust
+    /// use calcinum::Calculator;
+    ///
+    /// let c = Calculator::new_with_expression("1+1");
+    /// assert_eq!(c.expression(), "1+1".to_string());
+    /// ```
     pub fn expression(&self) -> String {
         String::from(self.expression.clone().trim())
     }
 
     /// Add digit to expression.
+    ///
+    /// ```rust
+    /// use calcinum::{Calculator, Key, Number};
+    ///
+    /// let mut c = Calculator::new();
+    /// c.press(Key::One);
+    /// c.press(Key::Add);
+    /// c.press(Key::One);
+    /// assert_eq!(c.calculate(), Ok(Number::from(2)));
+    /// ```
     pub fn press(&mut self, key: Key) {
         self.expression = format!("{}{key}", self.expression);
     }
 
     /// Appends the provided expression to stored expression with NO trailing space.
     /// It is up to you to ensure the provided expression contains valid characters!
+    ///
+    /// ```rust
+    /// use calcinum::{Calculator, Number};
+    ///
+    /// let mut c = Calculator::new_with_expression("1");
+    /// c.append("+1");
+    /// assert_eq!(c.calculate(), Ok(Number::from(2)));
+    /// ```
     pub fn append(&mut self, expression: &str) {
         self.expression = format!("{}{expression}", self.expression);
     }
 
     /// Calculates stored expression.
     /// We set the result to be the new expression, so you can use the result in further calculations.
+    ///
+    /// ```rust
+    /// use calcinum::{Calculator, Number};
+    ///
+    /// let mut c = Calculator::new_with_expression("1+1");
+    /// assert_eq!(c.calculate(), Ok(Number::from(2)));
+    /// ```
     pub fn calculate(&mut self) -> Result<Number, CalculatorError> {
         let tokens = ast::tokenize(&self.expression)?;
         let rpn_tokens = ast::parse(tokens)?;
@@ -47,11 +93,23 @@ impl Calculator {
     }
 
     /// Clear current expression.
+    ///
+    /// ```rust
+    /// use calcinum::Calculator;
+    ///
+    /// let mut c = Calculator::new();
+    ///
+    /// c.append("1+1");
+    /// assert_eq!(c.expression(), "1+1".to_string());
+    /// c.clear();
+    /// assert!(c.expression().is_empty());
+    /// ```
     pub fn clear(&mut self) {
         self.expression.clear();
     }
 }
 
+/// Represents keys on a calculator.
 #[derive(Debug, Clone, Copy)]
 pub enum Key {
     Zero,
@@ -100,7 +158,8 @@ impl fmt::Display for Key {
     }
 }
 
-#[derive(Debug, Clone)]
+/// Error type for [`Calculator`].
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CalculatorError {
     pub message: String,
 }

@@ -7,15 +7,11 @@ impl Number {
     /// ```rust
     /// use calcinum::Number;
     ///
-    /// let n = Number::from(0);
-    /// let is_int_variant = matches!(n, Number::Int(_));
-    /// assert!(is_int_variant);
-    /// assert!(n.is_zero());
+    /// let a = Number::from(0);
+    /// assert!(a.is_zero() && a.is_int());
     ///
-    /// let n = Number::from_f64_unchecked(0.0);
-    /// let is_decimal_variant = matches!(n, Number::Decimal(_));
-    /// assert!(is_decimal_variant);
-    /// assert!(n.is_zero());
+    /// let b = Number::from_f64_unchecked(0.0);
+    /// assert!(b.is_zero() && b.is_decimal());
     /// ```
     pub fn is_zero(&self) -> bool {
         match self {
