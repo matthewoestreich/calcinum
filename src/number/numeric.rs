@@ -173,7 +173,7 @@ impl Number {
     /// integer greater than or equal to `self`.
     ///
     /// Variant is not coerced. If you call `.ceil()` with variant `Number::Int`,
-    /// we just clone it and return it.
+    /// this is essentially a no-op.
     ///
     /// If you call `.ceil()` on variant `Number::Decimal`, even though the result
     /// will be an integer, we keep it as a `Number::Decimal`.
@@ -186,7 +186,9 @@ impl Number {
     /// assert_eq!(a, Number::from_f64_unchecked(124f64));
     /// ```
     pub fn ceil_assign(&mut self) {
-        *self = self.ceil();
+        if self.is_decimal() {
+            *self = self.ceil();
+        }
     }
 
     /// Greatest integer less than or equal to `self`.
@@ -217,7 +219,7 @@ impl Number {
     /// Greatest integer less than or equal to `self`.
     ///
     /// Variant is not coerced. If you call `.floor()` with variant `Number::Int`,
-    /// we just clone it and return it.
+    /// this is essentially a no-op.
     ///
     /// If you call `.floor()` on variant `Number::Decimal`, even though the result
     /// will be an integer, we keep it as a `Number::Decimal`.
@@ -230,7 +232,9 @@ impl Number {
     /// assert_eq!(a, Number::from_f64_unchecked(123f64));
     /// ```
     pub fn floor_assign(&mut self) {
-        *self = self.floor();
+        if self.is_decimal() {
+            *self = self.floor();
+        }
     }
 
     /// Sine function. Computes the unit-circle y-coordinate for a given angle in radians.
