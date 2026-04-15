@@ -353,6 +353,9 @@ impl Number {
     /// Rounding mode is half even; round to ‘nearest neighbor’, if equidistant, round
     /// towards nearest even digit.
     ///
+    /// Variant is not coerced. If you call `.ceil()` with variant `Number::Int`,
+    /// we just clone it and return it.
+    ///
     /// If the result of rounding a `Number::Decimal` is a whole number, we still keep
     /// the result as `Number::Decimal`.
     ///
@@ -381,7 +384,10 @@ impl Number {
     /// Rounding mode is half even; round to ‘nearest neighbor’, if equidistant, round
     /// towards nearest even digit.
     ///
-    /// If the result of rounding a `Number::Decimal` is a whole number, we still keep
+    /// Variant is not coerced. If you call `.ceil()` with variant `Number::Int`,
+    /// this is essentially a no-op.
+    ///
+    /// If the result of rounding a `BigDecimalRoundingModeber::Decimal` is a whole number, we still keep
     /// the result as `Number::Decimal`.
     ///
     /// ```rust
@@ -400,7 +406,9 @@ impl Number {
     /// assert_eq!(c, Number::from_f64_unchecked(124f64));
     /// ```
     pub fn round_assign(&mut self, round_digits: i64) {
-        *self = self.round(round_digits);
+        if self.is_decimal() {
+            *self = self.round(round_digits);
+        }
     }
 }
 
