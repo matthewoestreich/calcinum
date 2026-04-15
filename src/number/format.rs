@@ -83,11 +83,11 @@ impl Number {
             return false;
         }
 
-        let rest = s.trim_start_matches("0b");
-        let mut iter = rest.chars();
+        let bin_str = s.trim_start_matches("0b");
+        let mut iter = bin_str.chars();
         let mut seen_decimal = false;
 
-        if rest.starts_with('-') {
+        if bin_str.starts_with('-') {
             iter.next();
         }
 
