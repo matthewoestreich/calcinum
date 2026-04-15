@@ -1,4 +1,4 @@
-use calcinum::Formatting;
+use calcinum::{CalculatorError, Formatting};
 use std::{iter, str::Chars};
 
 #[derive(Default, Debug)]
@@ -33,8 +33,8 @@ impl Context {
     pub fn parse_and_eval(&mut self, expression: &str) {
         let mut output = String::new();
         let mut iter = expression.chars().peekable();
-        let mut bin_fmt_sep = String::new();
-        let mut bin_fmt_grp = 0;
+        let mut separator = String::new();
+        let mut group_by = 0;
 
         while let Some(c) = iter.next() {
             match c {
@@ -56,7 +56,7 @@ impl Context {
 
                                 // Parse read digit into `usize`.
                                 if let Ok(nd) = digits.parse::<usize>() {
-                                    bin_fmt_grp = nd;
+                                    group_by = nd;
                                 } else {
                                     println_red!(
                                         "Error while parsing formatting. Invalid group_by number : '{digits}'"
@@ -70,17 +70,18 @@ impl Context {
                             }
 
                             // Not a digit, use this char as separator.
-                            bin_fmt_sep.push(cc);
+                            separator.push(cc);
                         }
                     }
                 }
                 '@' => {
-                    let Some(i) = self.parse_history_ref(&mut iter) else {
-                        println_red!(
-                            "Unable to parse provided line. Expected format is '@1' where '1' is the target line."
-                        );
-                        self.push_history(expression, None);
-                        return;
+                    let i = match self.parse_history_ref(&mut iter) {
+                        Ok(n) => n,
+                        Err(e) => {
+                            println_red!("{}", e.message);
+                            self.push_history(expression, None);
+                            return;
+                        }
                     };
                     if i == 0 || i > self.history.len() {
                         println_red!("Line '{i}' does not exist.");
@@ -100,12 +101,12 @@ impl Context {
             }
         }
 
-        let bin_fmt = if bin_fmt_sep.is_empty() {
+        let separator = if separator.is_empty() {
             None
         } else {
-            Some(bin_fmt_sep.as_str())
+            Some(separator.as_str())
         };
-        self.eval(&output, bin_fmt, bin_fmt_grp);
+        self.eval(&output, separator, group_by);
     }
 
     fn eval(&mut self, expression: &str, bin_fmt_separator: Option<&str>, bin_fmt_grouping: usize) {
@@ -129,7 +130,23 @@ impl Context {
         }
     }
 
-    fn parse_history_ref(&self, iter: &mut iter::Peekable<Chars>) -> Option<usize> {
+    fn parse_history_ref(
+        &self,
+        iter: &mut iter::Peekable<Chars>,
+    ) -> Result<usize, CalculatorError> {
+        // This means we got `@@`, which means the last history element.
+        if let Some(l) = iter.peek()
+            && *l == '@'
+        {
+            if self.history.is_empty() {
+                return Err(CalculatorError {
+                    message: "Previous history result does not exist.".to_string(),
+                });
+            }
+            iter.next();
+            return Ok(self.history.len());
+        }
+
         let mut num_str = String::new();
 
         while let Some(&c) = iter.peek() {
@@ -140,7 +157,9 @@ impl Context {
             iter.next();
         }
 
-        num_str.parse::<usize>().ok()
+        num_str.parse::<usize>().map_err(|_| CalculatorError {
+            message: "Unable to parse provided line. Expected format is '@1' where '1' is the target line.".to_string(),
+        })
     }
 
     fn resolve_history(&self, i: usize) -> Option<&str> {

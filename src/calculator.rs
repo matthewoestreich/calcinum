@@ -102,7 +102,7 @@ impl fmt::Display for Key {
 
 #[derive(Debug, Clone)]
 pub struct CalculatorError {
-    message: String,
+    pub message: String,
 }
 
 impl error::Error for CalculatorError {}
