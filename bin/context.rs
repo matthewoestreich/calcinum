@@ -44,16 +44,33 @@ impl Context {
                     {
                         iter.next();
                         while let Some(cc) = iter.next() {
-                            if iter.peek().is_none() {
-                                // curr on last item
-                                if cc.is_ascii_digit() {
-                                    bin_fmt_grp = cc.to_string().parse::<usize>().unwrap();
-                                } else {
-                                    bin_fmt_sep.push(cc);
+                            if cc.is_ascii_digit() {
+                                // If we see a number, read everything until end of string
+                                let mut digits = String::from(cc);
+                                for n in iter.by_ref() {
+                                    if !n.is_ascii_digit() {
+                                        continue;
+                                    }
+                                    digits.push(n);
                                 }
-                            } else {
-                                bin_fmt_sep.push(cc);
+
+                                // Parse read digit into `usize`.
+                                if let Ok(nd) = digits.parse::<usize>() {
+                                    bin_fmt_grp = nd;
+                                } else {
+                                    println_red!(
+                                        "Error while parsing formatting. Invalid group_by number : '{digits}'"
+                                    );
+                                    self.push_history(expression, None);
+                                    return;
+                                }
+
+                                // Break - the group_by number should be the last thing on the line.
+                                break;
                             }
+
+                            // Not a digit, use this char as separator.
+                            bin_fmt_sep.push(cc);
                         }
                     }
                 }
