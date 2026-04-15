@@ -129,9 +129,9 @@ impl Number {
 
     /// Converts an `f64` into `Number` without guardrails.
     ///
-    /// <div class="warning">Panics</div>
-    ///
-    /// Panics if something goes wrong while converting `n` into `BigDecimal`.
+    /// <div class="warning">
+    ///     Panics! if something goes wrong while converting <code>n</code> into <code>BigDecimal</code>.
+    /// </div>
     ///
     /// ```rust
     /// use calcinum::Number;
