@@ -1,4 +1,4 @@
-use crate::{Number, number::nibble::Nibble};
+use crate::Number;
 use std::fmt;
 
 // ===========================================================================================
@@ -23,12 +23,15 @@ impl Number {
     }
 
     /// Formats `self` as it's binary string represenation.
-    /// **If we are unable to convert the integer part to a binary string we return an empty string.**
-    /// **If we are unable to convert the fractional part (if one exists) we only return the integer part**
     ///
     /// We format decimals that contain a fractional part literally. Meaning, we format
     /// the integer part and fractional part separately, then combine them via a decimal
     /// while preserving the sign.
+    ///
+    /// **`Number::Decimal(_)` Variant:**
+    ///
+    /// - **If we are unable to convert the integer part to a binary string we return `self.to_string()` instead.**
+    /// - **If we are unable to convert the fractional part (if one exists) we only return the integer part**
     ///
     /// ```rust
     /// use calcinum::Number;
@@ -37,8 +40,6 @@ impl Number {
     /// let expect = "-1111011.1111011".to_string();
     /// let number_bin = number.to_binary_str();
     /// assert_eq!(number_bin, expect);
-    /// // We use this method in the [`fmt::Binary`] impl as well.
-    /// assert_eq!(format!("{number:b}"), expect);
     /// ```
     pub fn to_binary_str(&self) -> String {
         format!("{self:b}")
@@ -49,6 +50,11 @@ impl Number {
     /// We format decimals that contain a fractional part literally. Meaning, we format
     /// the integer part and fractional part separately, then combine them via a decimal
     /// while preserving the sign.
+    ///
+    /// **`Number::Decimal(_)` Variant:**
+    ///
+    /// - **If we are unable to convert the integer part to a hexadecimal string we return `self.to_string()` instead.**
+    /// - **If we are unable to convert the fractional part (if one exists) we only return the integer part**
     ///
     /// ```rust
     /// use calcinum::Number;
@@ -141,95 +147,6 @@ impl Number {
         }
 
         true
-    }
-
-    fn decimal_str_to_hexadecimal_str(dec_str: &str, uppercase: bool) -> Option<String> {
-        if !Self::is_decimal_str(dec_str) {
-            return None;
-        }
-
-        let (sign, dec_str) = if let Some(digits) = dec_str.strip_prefix('-') {
-            ("-", digits)
-        } else {
-            ("", dec_str)
-        };
-
-        let mut dividend = dec_str.parse::<Number>().ok()?;
-        let mut hex_str = String::new();
-
-        loop {
-            let (quotient, remainder) = dividend.div_mod(16);
-            // Divisor is 16 - remainder will always fit in a Nibble
-            let remainder_nibble = Nibble::from_str_unchecked(&remainder.to_string());
-            hex_str.push_str(&remainder_nibble.to_hex(uppercase));
-
-            if quotient.is_zero() {
-                break;
-            }
-
-            // Use quotient as new dividend.
-            dividend = quotient;
-        }
-
-        hex_str.push_str(sign);
-        Some(hex_str.chars().rev().collect())
-    }
-
-    /// Converts a decimal string into it's binary string representation.
-    /// Returns `None` if `decimal_str` is not considered to be a valid decimal string.
-    /// **Empty strings are allowed, we simply return `Some(String::from("0"))`.**
-    /// A valid decimal string meets the following requirements:
-    /// - May contain a negative sign, e.g., `-` at the start of the string.
-    /// - May contain a single decimal, e.g., '.'.
-    /// - Outside of '-' or '.', can only contain digits '0'-'9'.
-    ///
-    /// We format decimals that contain a fractional part literally. Meaning, we format
-    /// the integer part and fractional part separately, then combine them via a decimal
-    /// while preserving the sign.
-    fn decimal_str_to_binary_str(decimal_str: &str) -> Option<String> {
-        if decimal_str == "0" || decimal_str.is_empty() {
-            return Some("0".to_string());
-        }
-        if !Self::is_decimal_str(decimal_str) {
-            // Since `is_decimal_str` will return `false` for empty strings, but we want to
-            // allow empty strings, we only return `None` if the string is not actually empty.
-            if !decimal_str.is_empty() {
-                return None;
-            }
-        }
-        let is_negative = decimal_str.starts_with('-');
-        let decimal_str = decimal_str.trim_start_matches('-');
-        let mut digits = Vec::with_capacity(decimal_str.len());
-        for c in decimal_str.chars() {
-            if let Some(d) = c.to_digit(10) {
-                digits.push(d as u8);
-            } else {
-                return None;
-            }
-        }
-        let mut binary_bits = String::new();
-        while !digits.is_empty() {
-            let mut remainder = 0;
-            let mut next_digits = Vec::with_capacity(digits.len());
-            // Long division by 2
-            for &digit in &digits {
-                let current = digit + remainder * 10;
-                let quotient = current / 2;
-                remainder = current % 2;
-                // Only push if it's not a leading zero
-                if !next_digits.is_empty() || quotient > 0 {
-                    next_digits.push(quotient);
-                }
-            }
-            // The remainder of the full division is our binary digit
-            binary_bits.push(if remainder == 0 { '0' } else { '1' });
-            digits = next_digits;
-        }
-        if is_negative {
-            binary_bits.push('-');
-        }
-        // Reverse to get the correct order (MSB first)
-        Some(binary_bits.chars().rev().collect())
     }
 }
 
@@ -342,7 +259,7 @@ pub enum Formatting {
     /// ```
     Decimal { scale: usize },
 
-    /// How many total digits to show. Symbols like `-` and `.` do not effect digit count.
+    /// How many total digits to show. Symbols like `-` and `.` do not affect digit count.
     ///
     /// ```rust
     /// use calcinum::{Number, Formatting};
@@ -358,11 +275,14 @@ pub enum Formatting {
     /// ```
     Digits { width: usize },
 
-    /// Format as binary string with separator and group_by chunks.
+    /// Format as binary string with `separator` and `group_by` chunks.
     /// Formats decimals with a fractional part literally. Meaning, we format each side of
-    /// the decimal separately, then combine them via a decimal.
+    /// the decimal separately, then combine them via a decimal while preserving the sign.
+    ///
+    /// This will also auto-pad the decimal string to make it 'even'.
     ///
     /// `separator` : delimiter used to separate groups.
+    ///
     /// `group_by` : how many binary digits that will appear consecutively before a `separator`.
     ///
     /// ```rust
@@ -383,7 +303,6 @@ pub enum Formatting {
 }
 
 impl Formatting {
-    /// Formats a [`Number`] with `self` formatting.
     /// See the documentation for [`Formatting` variants](crate::Formatting#variants) for more details.
     pub fn apply(&self, number: &Number) -> String {
         match *self {

@@ -22,6 +22,6 @@ jobs:
           tool: cargo-nextest
 
       - name: Run lib tests
-        run: cargo nextest run --lib --verbose
+        run: cargo nextest run --lib
       - name: Run doc tests
         run: cargo test --doc

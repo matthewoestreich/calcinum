@@ -4,7 +4,20 @@ use bigdecimal::{BigDecimal, RoundingMode as BigDecimalRoundingMode};
 use num_traits::Signed;
 
 impl Number {
+    /// Returns the numeric constant `pi` with specified precision.
     /// This method returns an error if the result of pi is NaN or Inf.
+    ///
+    /// ```rust
+    /// use calcinum::Number;
+    ///
+    /// let pi = Number::pi(64);
+    /// let expect = "3.1415926535897932383".parse::<Number>().expect("Number::Decimal");
+    /// assert_eq!(pi, Ok(expect));
+    ///
+    /// let pi = Number::pi(128);
+    /// let expect = "3.1415926535897932384626433832795028842".parse::<Number>().expect("Number::Decimal");
+    /// assert_eq!(pi, Ok(expect));
+    /// ```
     pub fn pi(precision: usize) -> Result<Number, NumberError> {
         ASTRO_CONSTS.with(|cc| {
             let mut ctx = cc.borrow_mut();

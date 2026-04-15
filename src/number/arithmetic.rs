@@ -6,7 +6,15 @@ use std::ops::{
 };
 
 impl Number {
-    /// Fallible API for div_assign.
+    /// Fallible API for [`impl DivAssign<&Number> for Number`](crate::Number#impl-DivAssign<%26Number>-for-Number).
+    ///
+    /// ```rust
+    /// use calcinum::{Number, NumberError};
+    ///
+    /// let mut x = Number::from(1);
+    /// let mut y = Number::ZERO;
+    /// assert_eq!(x.try_div_assign(&y), Err(NumberError::DivisionByZero));
+    /// ```
     pub fn try_div_assign(&mut self, rhs: &Number) -> Result<(), NumberError> {
         if rhs.is_zero() {
             return Err(NumberError::DivisionByZero);
@@ -37,7 +45,15 @@ impl Number {
         Ok(())
     }
 
-    /// Fallible API for div.
+    /// Fallible API for [`impl Div<&Number> for &Number`](crate::Number#impl-Div<%26Number>-for-%26Number).
+    ///
+    /// ```rust
+    /// use calcinum::{Number, NumberError};
+    ///
+    /// let mut x = Number::from(1);
+    /// let mut y = Number::ZERO;
+    /// assert_eq!(x.try_div(&y), Err(NumberError::DivisionByZero));
+    /// ```
     pub fn try_div(&self, rhs: &Number) -> Result<Number, NumberError> {
         if rhs.is_zero() {
             return Err(NumberError::DivisionByZero);

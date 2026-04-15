@@ -1,3 +1,32 @@
+macro_rules! impl_number_from {
+    ($t:ty) => {
+        impl From<$t> for Number {
+            fn from(value: $t) -> Self {
+                Number::Int(BigInt::from(value))
+            }
+        }
+
+        impl From<&$t> for Number
+        where
+            $t: Copy,
+        {
+            fn from(value: &$t) -> Self {
+                Number::Int(BigInt::from(*value))
+            }
+        }
+    };
+}
+
+macro_rules! impl_to_number {
+    ($t:ty) => {
+        impl ToNumber for $t {
+            fn to_number(&self) -> Number {
+                Number::from(*self)
+            }
+        }
+    };
+}
+
 /// Expects `$lhs` to be `&Number`
 /// Expects `$rhs` to be `&Number`
 /// Expects `$op` to be an operator (+, -, /, *, %)
