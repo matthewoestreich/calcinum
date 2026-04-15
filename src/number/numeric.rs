@@ -52,8 +52,11 @@ impl Number {
     /// let b = "12.3".parse::<Number>().expect("Number::Decimal");
     /// assert_eq!(b.pow(4), Ok(Number::from_f64_unchecked(22888.6641)));
     ///
+    /// // Demonstrating that even though the exponent fits in `i64` the call
+    /// // still returns an error due to the variant being `Number::Int(_)`.
     /// let c = Number::from(1);
-    /// let result = c.pow(u32::MAX as i64 + 1);
+    /// let exponent_fits_in_i64 = u32::MAX as i64 + 1;
+    /// let result = c.pow(exponent_fits_in_i64);
     /// assert!(matches!(result, Err(NumberError::InvalidExponent { .. })));
     /// ```
     pub fn pow(&self, exponent: i64) -> Result<Self, NumberError> {
@@ -94,8 +97,11 @@ impl Number {
     /// let _possible_error = b.pow_assign(4);
     /// assert_eq!(b, Number::from_f64_unchecked(22888.6641));
     ///
+    /// // Demonstrating that even though the exponent fits in `i64` the call
+    /// // still returns an error due to the variant being `Number::Int(_)`.
     /// let mut c = Number::from(1);
-    /// let result = c.pow_assign(u32::MAX as i64 + 1);
+    /// let exponent_fits_in_i64 = u32::MAX as i64 + 1;
+    /// let result = c.pow_assign(exponent_fits_in_i64);
     /// assert!(matches!(result, Err(NumberError::InvalidExponent { .. })));
     /// ```
     pub fn pow_assign(&mut self, exponent: i64) -> Result<(), NumberError> {
