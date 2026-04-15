@@ -408,7 +408,11 @@ impl Formatting {
 
     /// Finds the next multiple, `m`,  for an unsigned size, `n`.
     /// If `n` is already a multiple of `m`, we return `n`.
+    /// If `m` or `n` are 0, we return 0.
     fn next_pos_multiple_inclusive(m: usize, n: usize) -> usize {
+        if m == 0 || n == 0 {
+            return 0;
+        }
         if n.is_multiple_of(m) {
             return n;
         };
@@ -439,6 +443,8 @@ mod test {
     #[case::next_pos_multiple10(8, 65, 72)]
     #[case::next_pos_multiple11(1024, 1_000_000, 1_000_448)]
     #[case::next_pos_multiple_edge(13, 26, 26)]
+    #[case::next_pos_multiple_div_zero(0, 13, 0)]
+    #[case::next_pos_multiple_div_zero(13, 0, 0)]
     fn next_pos_multiple(#[case] m: usize, #[case] n: usize, #[case] expect: usize) {
         let a = Formatting::next_pos_multiple_inclusive(m, n);
         assert_eq!(a, expect, "expected {expect} got {a}");
