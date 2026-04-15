@@ -58,7 +58,7 @@ impl Calculator {
     /// assert_eq!(c.calculate(), Ok(Number::from(2)));
     /// ```
     pub fn press(&mut self, key: Key) {
-        self.expression = format!("{}{key}", self.expression);
+        self.expression.push(key.to_char());
     }
 
     /// Appends the provided expression to stored expression with NO trailing space.
@@ -72,7 +72,7 @@ impl Calculator {
     /// assert_eq!(c.calculate(), Ok(Number::from(2)));
     /// ```
     pub fn append(&mut self, expression: &str) {
-        self.expression = format!("{}{expression}", self.expression);
+        self.expression.push_str(expression);
     }
 
     /// Calculates stored expression.
@@ -130,6 +130,31 @@ pub enum Key {
     ParenthesesOpen,
     ParenthesesClose,
     Period,
+}
+
+impl Key {
+    pub fn to_char(&self) -> char {
+        match self {
+            Key::Zero => '0',
+            Key::One => '1',
+            Key::Two => '2',
+            Key::Three => '3',
+            Key::Four => '4',
+            Key::Five => '5',
+            Key::Six => '6',
+            Key::Seven => '7',
+            Key::Eight => '8',
+            Key::Nine => '9',
+            Key::Add => '+',
+            Key::Subtract => '-',
+            Key::Multiply => '*',
+            Key::Divide => '/',
+            Key::Pow => '^',
+            Key::ParenthesesOpen => '(',
+            Key::ParenthesesClose => ')',
+            Key::Period => '.',
+        }
+    }
 }
 
 impl fmt::Display for Key {

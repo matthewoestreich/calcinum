@@ -30,9 +30,30 @@ impl Number {
         })
     }
 
+    /// Exponentiation - raise `self` to `exponent.`
+    ///
+    /// <div class="warning">
+    ///
+    /// **Warning:** even though this method takes an <code>i64</code>, if <code>self</code> is variant
+    /// <code>Number::Int(_)</code>, then the exponent must fit in <code>u32</code>!
+    ///
+    /// If your exponent must fit into <code>i64</code> you can convert your
+    /// <code>Number::Int(_)</code instance into <code>Number::Decimal(_)</code> by calling
+    /// <code>my_number_int.promote()</code> and then calling <code>my_number_int.pow(some_i64)</code>
+    ///
+    /// </div>
+    ///
+    /// ```rust
+    /// use calcinum::Number;
+    ///
+    /// let a = Number::from(2);
+    /// assert_eq!(a.pow(4), Ok(Number::from(16)));
+    ///
+    /// let b = "12.3".parse::<Number>().expect("Number::Decimal");
+    /// assert_eq!(b.pow(4), Ok(Number::from_f64_unchecked(22888.6641)));
+    /// ```
     pub fn pow(&self, exponent: i64) -> Result<Self, NumberError> {
         match self {
-            Number::Decimal(d) => Ok(Number::Decimal(d.powi(exponent))),
             Number::Int(i) => {
                 let exponent_u32: u32 = exponent.try_into().map_err(|_| {
                     let m = format!("Number::Int exponent must fit in u32: {exponent} does not!");
@@ -40,17 +61,51 @@ impl Number {
                 })?;
                 Ok(Number::Int(i.pow(exponent_u32)))
             }
+            Number::Decimal(d) => Ok(Number::Decimal(d.powi(exponent))),
         }
     }
 
+    /// Same as [`pow`](crate::Number#method.pow), but mutates `self`.
+    /// Exponentiation - raise `self` to `exponent.`
+    ///
+    /// <div class="warning">
+    ///
+    /// **Warning:** even though this method takes an <code>i64</code>, if <code>self</code> is variant
+    /// <code>Number::Int(_)</code>, then the exponent must fit in <code>u32</code>!
+    ///
+    /// If your exponent must fit into <code>i64</code> you can convert your
+    /// <code>Number::Int(_)</code instance into <code>Number::Decimal(_)</code> by calling
+    /// <code>my_number_int.promote()</code> and then calling <code>my_number_int.pow_assign(some_i64)</code>
+    ///
+    /// </div>
+    ///
+    /// ```rust
+    /// use calcinum::Number;
+    ///
+    /// let mut a = Number::from(2);
+    /// let _possible_error = a.pow_assign(4);
+    /// assert_eq!(a, Number::from(16));
+    ///
+    /// let mut b = "12.3".parse::<Number>().expect("Number::Decimal");
+    /// let _possible_error = b.pow_assign(4);
+    /// assert_eq!(b, Number::from_f64_unchecked(22888.6641));
+    /// ```
     pub fn pow_assign(&mut self, exponent: i64) -> Result<(), NumberError> {
         *self = self.pow(exponent)?;
         Ok(())
     }
 
-    /// The distance of a number from zero on a number line, regardless of direction.
-    /// As a distance, it is always non-negative, effectively turning negative numbers
-    /// positive and leaving positive numbers (and zero) unchanged.
+    /// The absolute, or non-negative, distance of `self` from 0.
+    ///
+    /// ```rust
+    /// use calcinum::Number;
+    ///
+    /// let a = Number::from(-5);
+    /// assert_eq!(a.abs(), Number::from(5));
+    ///
+    /// let b = Number::from_f64_unchecked(-5.5);
+    /// assert_eq!(b.abs(), Number::from_f64_unchecked(5.5));
+    /// ```
     pub fn abs(&self) -> Self {
         match self {
             Number::Int(i) => Number::Int(i.abs()),
@@ -58,13 +113,38 @@ impl Number {
         }
     }
 
+    /// Same as [`abs`](crate::Number#method.abs), but with `self` assignment.
+    /// The absolute, or non-negative, distance of `self` from 0.
+    ///
+    /// ```rust
+    /// use calcinum::Number;
+    ///
+    /// let mut a = Number::from(-5);
+    /// a.abs_assign();
+    /// assert_eq!(a, Number::from(5));
+    ///
+    /// let mut b = Number::from_f64_unchecked(-5.5);
+    /// b.abs_assign();
+    /// assert_eq!(b, Number::from_f64_unchecked(5.5));
+    /// ```
     pub fn abs_assign(&mut self) {
         *self = self.abs();
     }
 
+    /// Smallest integer greater than or equal to `self`.
+    ///
     /// Variant is not coerced. If you call `.ceil()` with variant `Number::Int`,
-    /// we just clone it and return it. If you call `.ceil()` on variant `Number::Decimal`,
-    /// even though the result is a whole number, we keep it as a `Number::Decimal`.
+    /// we just clone it and return it.
+    ///
+    /// If you call `.ceil()` on variant `Number::Decimal`, even though the result
+    /// will be an integer, we keep it as a `Number::Decimal`.
+    ///
+    /// ```rust
+    /// use calcinum::Number;
+    ///
+    /// let a = Number::from_f64_unchecked(123.123);
+    /// assert_eq!(a.ceil(), Number::from_f64_unchecked(124f64));
+    /// ```
     pub fn ceil(&self) -> Self {
         match self {
             Number::Int(_) => self.clone(),
@@ -75,13 +155,40 @@ impl Number {
         }
     }
 
+    /// Same as [`ceil`](crate::Number#method.ceil), but with `self` assignment. Smallest
+    /// integer greater than or equal to `self`.
+    ///
+    /// Variant is not coerced. If you call `.ceil()` with variant `Number::Int`,
+    /// we just clone it and return it.
+    ///
+    /// If you call `.ceil()` on variant `Number::Decimal`, even though the result
+    /// will be an integer, we keep it as a `Number::Decimal`.
+    ///
+    /// ```rust
+    /// use calcinum::Number;
+    ///
+    /// let mut a = Number::from_f64_unchecked(123.123);
+    /// a.ceil_assign();
+    /// assert_eq!(a, Number::from_f64_unchecked(124f64));
+    /// ```
     pub fn ceil_assign(&mut self) {
         *self = self.ceil();
     }
 
+    /// Greatest integer less than or equal to `self`.
+    ///
     /// Variant is not coerced. If you call `.floor()` with variant `Number::Int`,
-    /// we just clone it and return it. If you call `.floor()` on variant `Number::Decimal`,
-    /// even though the result is a whole number, we keep it as a `Number::Decimal`.
+    /// we just clone it and return it.
+    ///
+    /// If you call `.floor()` on variant `Number::Decimal`, even though the result
+    /// will be an integer, we keep it as a `Number::Decimal`.
+    ///
+    /// ```rust
+    /// use calcinum::Number;
+    ///
+    /// let a = Number::from_f64_unchecked(123.123);
+    /// assert_eq!(a.floor(), Number::from_f64_unchecked(123f64));
+    /// ```
     pub fn floor(&self) -> Self {
         match self {
             Number::Int(_) => self.clone(),
@@ -92,13 +199,41 @@ impl Number {
         }
     }
 
+    /// Same as [`floor`](crate::Number#method.floor), but with `self` assignment.
+    /// Greatest integer less than or equal to `self`.
+    ///
+    /// Variant is not coerced. If you call `.floor()` with variant `Number::Int`,
+    /// we just clone it and return it.
+    ///
+    /// If you call `.floor()` on variant `Number::Decimal`, even though the result
+    /// will be an integer, we keep it as a `Number::Decimal`.
+    ///
+    /// ```rust
+    /// use calcinum::Number;
+    ///
+    /// let mut a = Number::from_f64_unchecked(123.123);
+    /// a.floor_assign();
+    /// assert_eq!(a, Number::from_f64_unchecked(123f64));
+    /// ```
     pub fn floor_assign(&mut self) {
         *self = self.floor();
     }
 
-    /// After converting to BigFloat from &str, we store the precision. We then use that precision
-    /// in the result - this is an attempt to keep precision as close as possible to what was passed in.
-    /// If the value you passed in is considered NaN or Inf, we default to 64 bits of precision.
+    /// Sine function. Computes the unit-circle y-coordinate for a given angle in radians.
+    ///
+    /// Temporarily converts the underlying value to `BigFloat` to perform trigonometric
+    /// operations, then converts the result back into `Number::Decimal(_)`.
+    ///
+    /// We attempt to retain precision throughout these conversions. If `self` is considered
+    /// `NaN` or `Infinity`, we fall back to using 64-bits of precision.
+    ///
+    /// ```rust
+    /// use calcinum::Number;
+    ///
+    /// let a = Number::from(12);
+    /// let expect = "-0.53657291800043497166".parse::<Number>().expect("Number::Decimal");
+    /// assert_eq!(a.sin(), Ok(expect));
+    /// ```
     pub fn sin(&self) -> Result<Self, NumberError> {
         Ok(match self {
             Number::Int(i) => Self::sin_str(&i.to_string())?,
@@ -106,6 +241,24 @@ impl Number {
         })
     }
 
+    /// Same as [`sin`](crate::Number#method.sin), but with `self` assignment.
+    ///
+    /// Sine function. Computes the unit-circle y-coordinate for a given angle in radians.
+    ///
+    /// Temporarily converts the underlying value to `BigFloat` to perform trigonometric
+    /// operations, then converts the result back into `Number::Decimal(_)`.
+    ///
+    /// We attempt to retain precision throughout these conversions. If `self` is considered
+    /// `NaN` or `Infinity`, we fall back to using 64-bits of precision.
+    ///
+    /// ```rust
+    /// use calcinum::Number;
+    ///
+    /// let mut a = Number::from(12);
+    /// let _possible_error = a.sin_assign();
+    /// let expect = "-0.53657291800043497166".parse::<Number>().expect("Number::Decimal");
+    /// assert_eq!(a, expect);
+    /// ```
     pub fn sin_assign(&mut self) -> Result<(), NumberError> {
         *self = self.sin()?;
         Ok(())
@@ -122,9 +275,21 @@ impl Number {
         })
     }
 
-    /// After converting to BigFloat from &str, we store the precision. We then use that precision
-    /// in the result - this is an attempt to keep precision as close as possible to what was passed in.
-    /// If the value you passed in is considered NaN or Inf, we default to 64 bits of precision.
+    /// Tangent function. Computes the unit-circle y/x ratio for a given angle in radians.
+    ///
+    /// Temporarily converts the underlying value to `BigFloat` to perform trigonometric
+    /// operations, then converts the result back into `Number::Decimal(_)`.
+    ///
+    /// We attempt to retain precision throughout these conversions. If `self` is considered
+    /// `NaN` or `Infinity`, we fall back to using 64-bits of precision.
+    ///
+    /// ```rust
+    /// use calcinum::Number;
+    ///
+    /// let a = Number::from(12);
+    /// let expect = "-0.63585992866158079246".parse::<Number>().expect("Number::Decimal");
+    /// assert_eq!(a.tan(), Ok(expect));
+    /// ```
     pub fn tan(&self) -> Result<Self, NumberError> {
         match self {
             Number::Int(i) => Self::tan_str(&i.to_string()),
@@ -132,6 +297,24 @@ impl Number {
         }
     }
 
+    /// Same as [`tan`](crate::Number#method.tan), but with `self` assignment.
+    ///
+    /// Tangent function. Computes the unit-circle y/x ratio for a given angle in radians.
+    ///
+    /// Temporarily converts the underlying value to `BigFloat` to perform trigonometric
+    /// operations, then converts the result back into `Number::Decimal(_)`.
+    ///
+    /// We attempt to retain precision throughout these conversions. If `self` is considered
+    /// `NaN` or `Infinity`, we fall back to using 64-bits of precision.
+    ///
+    /// ```rust
+    /// use calcinum::Number;
+    ///
+    /// let mut a = Number::from(12);
+    /// let _possible_error = a.tan_assign();
+    /// let expect = "-0.63585992866158079246".parse::<Number>().expect("Number::Decimal");
+    /// assert_eq!(a, expect);
+    /// ```
     pub fn tan_assign(&mut self) -> Result<(), NumberError> {
         *self = self.tan()?;
         Ok(())
@@ -148,11 +331,25 @@ impl Number {
         })
     }
 
-    /// Return given number rounded to ‘round_digits’ precision after the decimal point.
+    /// Return `self` rounded to ‘round_digits’ precision after the decimal point.
     /// Rounding mode is half even; round to ‘nearest neighbor’, if equidistant, round
     /// towards nearest even digit.
+    ///
     /// If the result of rounding a `Number::Decimal` is a whole number, we still keep
     /// the result as `Number::Decimal`.
+    ///
+    /// ```rust
+    /// use calcinum::Number;
+    ///
+    /// let a = Number::from_f64_unchecked(123.887);
+    /// assert_eq!(a.round(2), Number::from_f64_unchecked(123.89));
+    ///
+    /// let b = Number::from_f64_unchecked(123.884);
+    /// assert_eq!(b.round(2), Number::from_f64_unchecked(123.88));
+    ///
+    /// let c = Number::from_f64_unchecked(123.884);
+    /// assert_eq!(c.round(0), Number::from_f64_unchecked(124f64));
+    /// ```
     pub fn round(&self, round_digits: i64) -> Self {
         match self {
             Number::Int(_) => self.clone(),
@@ -160,6 +357,30 @@ impl Number {
         }
     }
 
+    /// Same as [`round`](crate::Number#method.round) but with `self` assignment.
+    ///
+    /// Return `self` rounded to ‘round_digits’ precision after the decimal point.
+    /// Rounding mode is half even; round to ‘nearest neighbor’, if equidistant, round
+    /// towards nearest even digit.
+    ///
+    /// If the result of rounding a `Number::Decimal` is a whole number, we still keep
+    /// the result as `Number::Decimal`.
+    ///
+    /// ```rust
+    /// use calcinum::Number;
+    ///
+    /// let mut a = Number::from_f64_unchecked(123.887);
+    /// a.round_assign(2);
+    /// assert_eq!(a, Number::from_f64_unchecked(123.89));
+    ///
+    /// let mut b = Number::from_f64_unchecked(123.884);
+    /// b.round_assign(2);
+    /// assert_eq!(b, Number::from_f64_unchecked(123.88));
+    ///
+    /// let mut c = Number::from_f64_unchecked(123.884);
+    /// c.round_assign(0);
+    /// assert_eq!(c, Number::from_f64_unchecked(124f64));
+    /// ```
     pub fn round_assign(&mut self, round_digits: i64) {
         *self = self.round(round_digits);
     }
