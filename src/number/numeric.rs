@@ -30,6 +30,39 @@ impl Number {
         })
     }
 
+    /// Get raw digit count, excluding `-` or `.` symbols.
+    ///
+    /// ```rust
+    /// use calcinum::Number;
+    ///
+    /// let a = Number::from(3245342);
+    /// assert_eq!(a.digit_count(), 7);
+    ///
+    /// let b = "3245.5323259".parse::<Number>().expect("Number::Decimal");
+    /// assert_eq!(b.digit_count(), 11);
+    ///
+    /// let c = "-321145.5323259".parse::<Number>().expect("Number::Decimal");
+    /// assert_eq!(c.digit_count(), 13);
+    /// ```
+    pub fn digit_count(&self) -> usize {
+        match self {
+            Number::Int(i) => {
+                let l = i.to_string().len();
+                if i.is_negative() { l - 1 } else { l }
+            }
+            Number::Decimal(d) => {
+                let mut l = d.to_plain_string().len();
+                if d.is_negative() {
+                    l -= 1
+                }
+                if !d.is_integer() {
+                    l -= 1
+                }
+                l
+            }
+        }
+    }
+
     /// Exponentiation - raise `self` to `exponent.`
     ///
     /// <div class="warning">
@@ -59,7 +92,7 @@ impl Number {
     /// let result = c.pow(exponent_fits_in_i64);
     /// assert!(matches!(result, Err(NumberError::InvalidExponent { .. })));
     /// ```
-    pub fn pow(&self, exponent: i64) -> Result<Self, NumberError> {
+    pub fn pow(&self, exponent: i64) -> Result<Number, NumberError> {
         match self {
             Number::Int(i) => {
                 let exponent_u32: u32 = exponent.try_into().map_err(|_| {

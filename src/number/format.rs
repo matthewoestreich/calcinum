@@ -1,4 +1,4 @@
-use crate::Number;
+use crate::{Number, number::hexchar::HexChar};
 use std::fmt;
 
 // ===========================================================================================
@@ -103,6 +103,47 @@ impl Number {
                 }
                 _ => {
                     if c != '0' && c != '1' {
+                        return false;
+                    }
+                }
+            }
+        }
+
+        true
+    }
+
+    /// We expect a hexadecimal string to start with `"0x"`.
+    /// An empty string will return `false`.
+    /// A hexadecimal string can contain (in any order):
+    /// - Digits `0` - `9`.
+    /// - Characters (case insensitive) `A`, `B`, `C`, `D`, `E`, `F`.
+    /// - A single negative sign, e.g., `-`, required to be at the start of the string, after the `"0b"` prefix.
+    /// - A decimal, e.g., `.` to denote a fractional number in binary form.
+    pub(crate) fn is_hexadecimal_str(s: &str) -> bool {
+        if !s.starts_with("0x") || s.is_empty() {
+            return false;
+        }
+
+        let hex_str = s.trim_start_matches("0x");
+        let mut iter = hex_str.chars();
+        let mut seen_decimal = false;
+
+        if hex_str.starts_with('-') {
+            iter.next();
+        }
+
+        for c in iter {
+            match c {
+                // We should not see any more '-' signs.
+                '-' => return false,
+                '.' => {
+                    if seen_decimal {
+                        return false;
+                    }
+                    seen_decimal = true;
+                }
+                _ => {
+                    if !HexChar::is_valid(&c) {
                         return false;
                     }
                 }

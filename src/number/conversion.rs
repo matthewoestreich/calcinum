@@ -1,4 +1,4 @@
-use crate::{Number, NumberError, number::nibble::Nibble};
+use crate::{Number, NumberError, number::hexchar::HexChar};
 use bigdecimal::BigDecimal;
 use num_bigint::BigInt;
 use num_traits::{Num, Signed, ToPrimitive};
@@ -162,9 +162,67 @@ impl Number {
         Self::Decimal(bd)
     }
 
-    /// We format decimals that contain a fractional part literally. Meaning, we format
-    /// the integer part and fractional part separately, then combine them via a decimal
-    /// while preserving the sign.
+    /// Performs hexadecimal validation to ensure we were given a hexadecimal string.
+    /// Converts said hexadecimal string into `Number`.
+    ///
+    /// [!IMPORTANT]
+    /// - We expect a hexadecimal string to start with `"0x"`.
+    /// - An empty input string will return an `Err`.
+    /// - A hexadecimal string can contain (in any order):
+    ///   - Digits `0` - `9`.
+    ///   - Characters (case insensitive) `A`, `B`, `C`, `D`, `E`, `F`.
+    /// - Non hexadecimal characters
+    ///   - `'-'` : a single negative sign; required to be at the start of the string, after the `"0x"` prefix
+    ///   - `'.'` : a single decimal; allowed anywhere to the right of the negative sign.
+    pub fn from_hexadecimal_str(hex_str: &str) -> Result<Number, NumberError> {
+        if !Self::is_hexadecimal_str(hex_str) {
+            return Err(NumberError::Parsing {
+                value: format!("'{hex_str}' is not a hexadecimal string"),
+            });
+        }
+
+        let s = hex_str.strip_prefix("0x").unwrap_or(hex_str);
+        let (is_signed, s) = match s.strip_prefix('-') {
+            Some(rest) => (true, rest),
+            None => (false, s),
+        };
+
+        let base = Number::from(16);
+        let (int_part, fract_part) = s.split_once('.').unwrap_or((s, ""));
+        let int_part_len = int_part.len();
+        let fract_part_len = fract_part.len();
+
+        let mut int = int_part.chars().enumerate().try_fold(
+            Number::ZERO,
+            |acc, (i, c)| -> Result<_, NumberError> {
+                let exponent = int_part_len as u32 - 1 - i as u32;
+                let multiplier = base.pow(exponent as i64)?;
+                let hexchar = HexChar::from_char_unchecked(&c);
+                let digit = Number::from(hexchar);
+                Ok(acc + digit * multiplier)
+            },
+        )?;
+
+        if fract_part_len > 0
+            && let Some(fract) = fract_part.chars().enumerate().try_fold(
+                Number::ZERO,
+                |acc, (i, c)| -> Option<Number> {
+                    let exponent = fract_part_len as u32 - 1 - i as u32;
+                    let multiplyer = base.pow(exponent as i64).ok()?;
+                    let hexchar = HexChar::from_char_unchecked(&c);
+                    let digit = Number::from(hexchar);
+                    Some(acc + digit * multiplyer)
+                },
+            )
+        {
+            // shift fract into decimal position, e.g., `int + fract / 10.pow(fract_digit_count)`
+            let scale = Number::from(10).pow(fract.digit_count() as i64)?;
+            int += fract / scale;
+        }
+
+        Ok(if is_signed { -int } else { int })
+    }
+
     /// Returns `None` if `decimal_str` is not considered to be a valid decimal string.
     /// **Empty strings are allowed, we simply return `Some(String::from("0"))`.**
     /// A valid decimal string meets the following requirements:
@@ -217,9 +275,6 @@ impl Number {
         Some(binary_bits.chars().rev().collect())
     }
 
-    /// We format decimals that contain a fractional part literally. Meaning, we format
-    /// the integer part and fractional part separately, then combine them via a decimal
-    /// while preserving the sign.
     /// Returns `None` if `decimal_str` is not considered to be a valid decimal string.
     /// **Empty strings are allowed, we simply return `Some(String::from("0"))`.**
     /// A valid decimal string meets the following requirements:
@@ -253,8 +308,8 @@ impl Number {
         loop {
             let (quotient, remainder) = dividend.div_mod(16);
             // Divisor is 16 - remainder will always fit in a Nibble
-            let remainder_nibble = Nibble::from_str_unchecked(&remainder.to_string());
-            hex_str.push_str(&remainder_nibble.to_hex(uppercase));
+            let remainder_nibble = HexChar::from_str_unchecked(&remainder.to_string());
+            hex_str.push_str(&remainder_nibble.to_str(uppercase));
 
             if quotient.is_zero() {
                 break;
@@ -438,6 +493,18 @@ impl_number_from!(i32);
 impl_number_from!(i64);
 impl_number_from!(i128);
 
+impl From<HexChar> for Number {
+    fn from(n: HexChar) -> Self {
+        Number::Int((n as u8).into())
+    }
+}
+
+impl From<&HexChar> for Number {
+    fn from(n: &HexChar) -> Self {
+        Number::Int((*n as u8).into())
+    }
+}
+
 impl From<BigDecimal> for Number {
     fn from(value: BigDecimal) -> Self {
         Number::Decimal(value)
@@ -489,7 +556,10 @@ impl FromStr for Number {
         if let Ok(n) = Number::from_binary_str(s) {
             return Ok(n);
         }
-
+        // If we were given a hexadecimal string.
+        if let Ok(n) = Number::from_hexadecimal_str(s) {
+            return Ok(n);
+        }
         // If we were given a decimal string.
         if let Ok(i) = s.parse::<BigInt>() {
             return Ok(Number::Int(i));
@@ -497,7 +567,6 @@ impl FromStr for Number {
         if let Ok(d) = s.parse::<BigDecimal>() {
             return Ok(Number::Decimal(d));
         }
-
         // Fall through to error.
         Err(NumberError::Parsing {
             value: s.to_string(),
@@ -556,6 +625,26 @@ mod test {
     fn from_str(#[case] number: &str, #[case] expect: &str) {
         let x = Number::from_str(number).expect("Number::from_str");
         let e = expect.parse::<Number>().expect("to parse 'expect' param");
+        assert_eq!(x, e, "expected '{e:?}' got '{x:?}'");
+    }
+
+    #[rstest]
+    #[case::from_str_hex1("0x20FDE.3CBD04", "135134.3980548")]
+    #[case::from_str_hex2("0x-20FDE.3CBD04", "-135134.3980548")]
+    #[case::from_str_hex3("0x1", "1")]
+    #[case::from_str_hex4(
+        "0xd0d0c7c5742a63ee3d89fb998ca24c7a",
+        "277563472713248395635956171186146266234"
+    )]
+    //#[case::from_str_hex5()]
+    //#[case::from_str_hex6()]
+    //#[case::from_str_hex7()]
+    //#[case::from_str_hex8()]
+    //#[case::from_str_hex9()]
+    //#[case::from_str_hex10()]
+    fn from_hex_str(#[case] number: &str, #[case] expect: &str) {
+        let x = Number::from_hexadecimal_str(number).expect("hex to Number");
+        let e = expect.parse::<Number>().expect("control string to parse");
         assert_eq!(x, e, "expected '{e:?}' got '{x:?}'");
     }
 

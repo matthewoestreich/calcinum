@@ -7,7 +7,7 @@ mod bitwise;
 mod comparison;
 mod conversion;
 mod format;
-mod nibble;
+mod hexchar;
 mod numeric;
 
 use astro_float::Consts;
