@@ -143,7 +143,7 @@ impl Number {
                     seen_decimal = true;
                 }
                 _ => {
-                    if !HexChar::is_valid(&c) {
+                    if HexChar::try_from(c).is_err() {
                         return false;
                     }
                 }

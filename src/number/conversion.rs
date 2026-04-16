@@ -197,7 +197,7 @@ impl Number {
             |acc, (i, c)| -> Result<_, NumberError> {
                 let exponent = int_part_len as u32 - 1 - i as u32;
                 let multiplier = base.pow(exponent as i64)?;
-                let hexchar = HexChar::from_char_unchecked(&c);
+                let hexchar = HexChar::try_from(&c)?;
                 let digit = Number::from(hexchar);
                 Ok(acc + digit * multiplier)
             },
@@ -209,7 +209,7 @@ impl Number {
                 |acc, (i, c)| -> Option<Number> {
                     let exponent = fract_part_len as u32 - 1 - i as u32;
                     let multiplyer = base.pow(exponent as i64).ok()?;
-                    let hexchar = HexChar::from_char_unchecked(&c);
+                    let hexchar = HexChar::try_from(&c).ok()?;
                     let digit = Number::from(hexchar);
                     Some(acc + digit * multiplyer)
                 },
@@ -308,8 +308,8 @@ impl Number {
         loop {
             let (quotient, remainder) = dividend.div_mod(16);
             // Divisor is 16 - remainder will always fit in a Nibble
-            let remainder_nibble = HexChar::from_str_unchecked(&remainder.to_string());
-            hex_str.push_str(&remainder_nibble.to_str(uppercase));
+            let remainder_nibble = HexChar::from_str(&remainder.to_string()).ok()?;
+            hex_str.push(remainder_nibble.to_char(uppercase));
 
             if quotient.is_zero() {
                 break;
