@@ -164,7 +164,7 @@ impl Number {
     /// Performs hexadecimal validation to ensure we were given a hexadecimal string.
     /// Converts said hexadecimal string into `Number`.
     ///
-    /// - We expect a hexadecimal string to start with `"0x"`.
+    /// - We expect a hexadecimal string to start with `"0x"` or `"0x"` for negative numbers.
     /// - An empty input string will return an `Err`.
     /// - A hexadecimal string can contain (in any order):
     ///   - Digits `0` - `9`.
@@ -216,10 +216,10 @@ impl Number {
                 .enumerate()
                 .try_fold(Number::ZERO, |acc, (i, c)| -> Option<Number> {
                     let exponent = fract_part_len as u32 - 1 - i as u32;
-                    let multiplyer = base.pow(exponent as i64).ok()?;
+                    let multiplier = base.pow(exponent as i64).ok()?;
                     let hexchar = HexChar::try_from(&c).ok()?;
                     let digit = Number::from(hexchar);
-                    Some(acc + digit * multiplyer)
+                    Some(acc + digit * multiplier)
                 })
         };
 
@@ -431,7 +431,7 @@ impl Number {
         }
         if !Self::is_binary_str(s) {
             return Err(NumberError::Parsing {
-                value: format!("'{s}' is not a binary string, binary strings start with '0b'"),
+                value: format!("'{s}' is not a binary string"),
             });
         }
 
