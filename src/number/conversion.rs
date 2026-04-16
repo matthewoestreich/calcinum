@@ -142,9 +142,13 @@ impl Number {
     }
 
     /// Converts an `f64` into `Number` without guardrails.
-    /// # ℹ️ IMPORTANT
-    ///  panics!
-    /// # if something goes wrong while converting `n` into BigDecimal.
+    ///
+    /// <div class="warning">
+    ///
+    /// > # panics!
+    /// > as an unchecked method, it will panic if something goes wrong during the conversion
+    ///
+    /// </div>
     ///
     /// ```rust
     /// use calcinum::Number;
@@ -164,14 +168,28 @@ impl Number {
     /// Performs hexadecimal validation to ensure we were given a hexadecimal string.
     /// Converts said hexadecimal string into `Number`.
     ///
-    /// - We expect a hexadecimal string to start with `"0x"` or `"0x"` for negative numbers.
-    /// - An empty input string will return an `Err`.
-    /// - A hexadecimal string can contain (in any order):
-    ///   - Digits `0` - `9`.
-    ///   - Characters (case insensitive) `A`, `B`, `C`, `D`, `E`, `F`.
-    /// - Non hexadecimal characters
-    ///   - `'-'` : a single negative sign; required to be at the start of the string, after the `"0x"` prefix
-    ///   - `'.'` : a single decimal; allowed anywhere to the right of the negative sign.
+    /// <div class="warning">
+    ///
+    /// # A valid hexadecimal string
+    ///
+    /// ```text
+    ///   -0xFFA.FFA
+    ///   | | | |
+    ///   | | | |
+    ///   | | | +-- A single decimal anywhere after `0x` (or `-0x`) prefix
+    ///   | | +-- Any amount of valid hexadecimal characters (see below)
+    ///   | +-- `0x` (or `-0x` for negative numbers) is required as prefix
+    ///   +---- A single negative sign; only allowed as first char
+    /// ```
+    ///
+    /// </div>
+    ///
+    /// # Valid hexadecimal characters
+    /// - Must start with `0x` or `-0x` for negative numbers
+    /// - Any combination of:
+    ///   - digits `0`-`9`
+    ///   - characters (case **in**sensitive) `A`, `B`, `C`, `D`, `E`, `F`
+    ///
     ///
     /// ```rust
     /// use calcinum::Number;
@@ -179,6 +197,7 @@ impl Number {
     /// let a = "-0x63A.2675".parse::<Number>().expect("Number::Decimal");
     /// assert_eq!(a, "-1594.9845".parse::<Number>().expect("eq"));
     /// ```
+    ///
     pub fn from_hexadecimal_str(hex_str: &str) -> Result<Number, NumberError> {
         if !Self::is_hexadecimal_str(hex_str) {
             return Err(NumberError::Parsing {
