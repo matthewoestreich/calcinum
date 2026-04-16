@@ -647,7 +647,7 @@ mod test {
     fn number_to_hex_str(#[case] number: &str, #[case] expect: &str, #[case] uppercase: bool) {
         let n = number.parse::<Number>().expect("Number::<t>");
         let e = expect.to_string();
-        let r = n.to_hex_str(uppercase);
+        let r = n.to_hexadecimal_str(uppercase);
         assert_eq!(r, e, "expected hex '{e}' got hex '{r}'");
     }
 }
