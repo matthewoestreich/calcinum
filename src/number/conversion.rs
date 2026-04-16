@@ -279,51 +279,88 @@ impl Number {
         Some(binary_bits.chars().rev().collect())
     }
 
-    /// Returns `None` if `decimal_str` is not considered to be a valid decimal string.
-    /// **Empty strings are allowed, we simply return `Some(String::from("0"))`.**
-    /// A valid decimal string meets the following requirements:
-    /// - May contain a negative sign, e.g., `-` at the start of the string.
-    /// - May contain a single decimal, e.g., '.'.
-    /// - Outside of '-' or '.', can only contain digits '0'-'9'.
+    /// Converts a decimal string to a hexadecimal string.
     pub(crate) fn decimal_str_to_hexadecimal_str(
         decimal_str: &str,
         uppercase: bool,
-    ) -> Option<String> {
+    ) -> Result<String, NumberError> {
         if decimal_str == "0" || decimal_str.is_empty() {
-            return Some("0".to_string());
+            return Ok("0".to_string());
         }
 
-        if !Self::is_decimal_str(decimal_str) {
-            return None;
-        }
+        let mut iter = decimal_str.chars().peekable();
+        let mut is_negative = false;
 
-        let (sign, dec_str) = match decimal_str.strip_prefix('-') {
-            Some(rest) => ("-", rest),
-            None => ("", decimal_str),
+        if let Some(&p) = iter.peek()
+            && p == '-'
+        {
+            is_negative = true;
+            iter.next();
         };
 
-        let mut dividend = dec_str.parse::<Number>().ok()?;
-        let mut hex_str = String::new();
+        let mut int_part = String::new();
+        let mut fract_part = String::new();
+        let mut seen_dec = false;
 
-        loop {
-            // Divisor is 16 - remainder will always fit in a HexChar
-            let (quotient, remainder) = dividend.div_mod(16);
-
-            hex_str.push(
-                HexChar::from_str(&remainder.to_string())
-                    .ok()?
-                    .to_char(uppercase),
-            );
-
-            if quotient.is_zero() {
-                break;
+        for c in iter {
+            match c {
+                // Already checked front
+                '-' => return Err(NumberError::InvalidArgument),
+                '.' if !seen_dec => seen_dec = true,
+                c if c.is_ascii_digit() => {
+                    if !seen_dec {
+                        int_part.push(c);
+                    } else {
+                        fract_part.push(c);
+                    }
+                }
+                _ => return Err(NumberError::InvalidArgument),
             }
-
-            dividend = quotient;
         }
 
-        hex_str.push_str(sign);
-        Some(hex_str.chars().rev().collect())
+        let mut int_dividend = int_part.parse::<Number>()?;
+        let mut int_str = String::new();
+
+        loop {
+            let (int_quotient, int_remainder) = int_dividend.div_mod(16);
+            let int_char = HexChar::from_str(&int_remainder.to_string())?.to_char(uppercase);
+            int_str.push(int_char);
+            if int_quotient.is_zero() {
+                break;
+            }
+            int_dividend = int_quotient;
+        }
+
+        if is_negative {
+            int_str.push('-');
+        }
+
+        let mut output = int_str.chars().rev().collect();
+
+        // RETURN if there is no more work to do.
+        if fract_part.is_empty() {
+            return Ok(output);
+        }
+
+        output.push('.');
+
+        let mut fract_dividend = fract_part.parse::<Number>()?;
+        let mut fract_str = String::new();
+
+        loop {
+            let (fract_quotient, fract_remainder) = fract_dividend.div_mod(16);
+            let fract_char = HexChar::from_str(&fract_remainder.to_string())?.to_char(uppercase);
+            fract_str.push(fract_char);
+            if fract_quotient.is_zero() {
+                break;
+            }
+            fract_dividend = fract_quotient;
+        }
+
+        let fract_output: String = fract_str.chars().rev().collect();
+        output.push_str(&fract_output);
+
+        Ok(output)
     }
 
     /// If the underlying value for `T` does not fit within an

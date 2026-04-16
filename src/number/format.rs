@@ -240,17 +240,10 @@ impl fmt::LowerHex for Number {
         match self {
             Number::Int(i) => fmt::LowerHex::fmt(i, f),
             Number::Decimal(d) => {
-                let d_str = d.to_plain_string();
-                let (int_part, fract_part) = d_str.split_once('.').unwrap_or((&d_str, ""));
-
-                match Self::decimal_str_to_hexadecimal_str(int_part, false) {
-                    Some(int_part_hex) => {
-                        match Self::decimal_str_to_hexadecimal_str(fract_part, false) {
-                            Some(fract_part_hex) => write!(f, "{int_part_hex}.{fract_part_hex}"),
-                            None => write!(f, "{int_part_hex}"),
-                        }
-                    }
-                    None => write!(f, "{d}"),
+                let ds = d.to_plain_string();
+                match Self::decimal_str_to_hexadecimal_str(&ds, false) {
+                    Ok(s) => write!(f, "{s}"),
+                    Err(_) => write!(f, "{ds}"),
                 }
             }
         }
@@ -262,17 +255,10 @@ impl fmt::UpperHex for Number {
         match self {
             Number::Int(i) => fmt::UpperHex::fmt(i, f),
             Number::Decimal(d) => {
-                let d_str = d.to_plain_string();
-                let (int_part, fract_part) = d_str.split_once('.').unwrap_or((&d_str, ""));
-
-                match Self::decimal_str_to_hexadecimal_str(int_part, true) {
-                    Some(int_part_hex) => {
-                        match Self::decimal_str_to_hexadecimal_str(fract_part, true) {
-                            Some(fract_part_hex) => write!(f, "{int_part_hex}.{fract_part_hex}"),
-                            None => write!(f, "{int_part_hex}"),
-                        }
-                    }
-                    None => write!(f, "{d}"),
+                let ds = d.to_plain_string();
+                match Self::decimal_str_to_hexadecimal_str(&ds, true) {
+                    Ok(s) => write!(f, "{s}"),
+                    Err(_) => write!(f, "{ds}"),
                 }
             }
         }
