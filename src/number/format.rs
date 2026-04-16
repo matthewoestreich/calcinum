@@ -60,10 +60,10 @@ impl Number {
     /// let n = "-123.123".parse::<Number>().expect("Number::Decimal");
     ///
     /// let uppercase = true;
-    /// assert_eq!(n.to_hex_str(uppercase), "-7B.7B".to_string());
+    /// assert_eq!(n.to_hexadecimal_str(uppercase), "-7B.7B".to_string());
     ///
     /// let uppercase = false;
-    /// assert_eq!(n.to_hex_str(uppercase), "-7b.7b".to_string());
+    /// assert_eq!(n.to_hexadecimal_str(uppercase), "-7b.7b".to_string());
     /// ```
     pub fn to_hexadecimal_str(&self, uppercase: bool) -> String {
         if uppercase {
