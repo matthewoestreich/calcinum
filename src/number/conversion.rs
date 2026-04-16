@@ -305,11 +305,17 @@ impl Number {
         let mut dividend = dec_str.parse::<Number>().ok()?;
         let mut hex_str = String::new();
 
+        println!("\ndec_str = '{dec_str}'\ndec_str_as_Number = '{dividend}'");
+
         loop {
             let (quotient, remainder) = dividend.div_mod(16);
+            println!("\tquotient = '{quotient}'\n\tremainder = '{remainder}'");
             // Divisor is 16 - remainder will always fit in a Nibble
-            let remainder_nibble = HexChar::from_str(&remainder.to_string()).ok()?;
-            hex_str.push(remainder_nibble.to_char(uppercase));
+            let remainder_hexchar = HexChar::from_str(&remainder.to_string()).ok()?;
+            println!("\tremainder_hexchar = '{remainder_hexchar}'");
+            let remainder_char = remainder_hexchar.to_char(uppercase);
+            println!("\tremainder_char = '{remainder_char}'");
+            hex_str.push(remainder_char);
 
             if quotient.is_zero() {
                 break;
@@ -317,6 +323,7 @@ impl Number {
 
             // Use quotient as new dividend.
             dividend = quotient;
+            println!("\t -- looped --");
         }
 
         hex_str.push_str(sign);

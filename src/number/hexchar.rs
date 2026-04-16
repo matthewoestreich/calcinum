@@ -51,8 +51,30 @@ impl HexChar {
 impl TryFrom<u8> for HexChar {
     type Error = NumberError;
 
-    fn try_from(n: u8) -> Result<Self, Self::Error> {
-        HexChar::try_from(n as char)
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        Ok(match value {
+            0 => HexChar::D0,
+            1 => HexChar::D1,
+            2 => HexChar::D2,
+            3 => HexChar::D3,
+            4 => HexChar::D4,
+            5 => HexChar::D5,
+            6 => HexChar::D6,
+            7 => HexChar::D7,
+            8 => HexChar::D8,
+            9 => HexChar::D9,
+            10 => HexChar::A,
+            11 => HexChar::B,
+            12 => HexChar::C,
+            13 => HexChar::D,
+            14 => HexChar::E,
+            15 => HexChar::F,
+            _ => {
+                return Err(NumberError::Parsing {
+                    value: format!("'{value}' out of hex range"),
+                });
+            }
+        })
     }
 }
 
@@ -87,11 +109,30 @@ impl FromStr for HexChar {
     type Err = NumberError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let c = s.chars().next().ok_or(NumberError::Parsing {
-            value: "empty string".to_string(),
-        })?;
-
-        Self::try_from(c)
+        let hc = match s {
+            "0" => HexChar::D0,
+            "1" => HexChar::D1,
+            "2" => HexChar::D2,
+            "3" => HexChar::D3,
+            "4" => HexChar::D4,
+            "5" => HexChar::D5,
+            "6" => HexChar::D6,
+            "7" => HexChar::D7,
+            "8" => HexChar::D8,
+            "9" => HexChar::D9,
+            "10" => HexChar::A,
+            "11" => HexChar::B,
+            "12" => HexChar::C,
+            "13" => HexChar::D,
+            "14" => HexChar::E,
+            "15" => HexChar::F,
+            _ => {
+                return Err(NumberError::Parsing {
+                    value: format!("invalid hex character : '{s}'"),
+                });
+            }
+        };
+        Ok(hc)
     }
 }
 
