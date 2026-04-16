@@ -288,42 +288,34 @@ impl Number {
         if decimal_str == "0" || decimal_str.is_empty() {
             return Some("0".to_string());
         }
+
         if !Self::is_decimal_str(decimal_str) {
-            // Since `is_decimal_str` will return `false` for empty strings, but we want to
-            // allow empty strings, we only return `None` if the string is not actually empty.
-            if !decimal_str.is_empty() {
-                return None;
-            }
+            return None;
         }
 
-        let (sign, dec_str) = if let Some(digits) = decimal_str.strip_prefix('-') {
-            ("-", digits)
-        } else {
-            ("", decimal_str)
+        let (sign, dec_str) = match decimal_str.strip_prefix('-') {
+            Some(rest) => ("-", rest),
+            None => ("", decimal_str),
         };
 
         let mut dividend = dec_str.parse::<Number>().ok()?;
         let mut hex_str = String::new();
 
-        println!("\ndec_str = '{dec_str}'\ndec_str_as_Number = '{dividend}'");
-
         loop {
+            // Divisor is 16 - remainder will always fit in a HexChar
             let (quotient, remainder) = dividend.div_mod(16);
-            println!("\tquotient = '{quotient}'\n\tremainder = '{remainder}'");
-            // Divisor is 16 - remainder will always fit in a Nibble
-            let remainder_hexchar = HexChar::from_str(&remainder.to_string()).ok()?;
-            println!("\tremainder_hexchar = '{remainder_hexchar}'");
-            let remainder_char = remainder_hexchar.to_char(uppercase);
-            println!("\tremainder_char = '{remainder_char}'");
-            hex_str.push(remainder_char);
+
+            hex_str.push(
+                HexChar::from_str(&remainder.to_string())
+                    .ok()?
+                    .to_char(uppercase),
+            );
 
             if quotient.is_zero() {
                 break;
             }
 
-            // Use quotient as new dividend.
             dividend = quotient;
-            println!("\t -- looped --");
         }
 
         hex_str.push_str(sign);
