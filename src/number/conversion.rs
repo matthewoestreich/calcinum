@@ -175,7 +175,6 @@ impl Number {
     /// ```text
     ///   -0xFFA.FFA
     ///   | | | |
-    ///   | | | |
     ///   | | | +-- A single decimal anywhere after `0x` (or `-0x`) prefix
     ///   | | +-- Any amount of valid hexadecimal characters (see below)
     ///   | +-- `0x` (or `-0x` for negative numbers) is required as prefix
@@ -404,6 +403,50 @@ impl Number {
         output.push_str(&fract_output);
 
         Ok(output)
+    }
+
+    /// Encodes a string into base64 encoded string.
+    /// ```rust,ignore
+    /// use calcinum::Number;
+    /// let encoded = Number::base64_encode("abcd");
+    /// assert_eq!(encoded, "YWJjZA==");
+    /// ```
+    pub(crate) fn base64_encode(s: &str) -> String {
+        let alpha = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+        let mut base64 = String::new();
+
+        for bytes in s.as_bytes().chunks(3) {
+            let mut buf: u32 = 0;
+
+            // Shift 24 bits (3 bytes) into our 32 bit buffer. We don't shift 32-bits
+            // (4 bytes) bc we need to get them out in 6-bit chunks (32/6=10.333, but 24/6=4)
+            for i in 0..3 {
+                buf <<= 8; // 'pre-shift' bytes
+                if i < bytes.len() {
+                    // Only put byte in if it exists, the shift
+                    // above handles padding when a byte doesnt exist.
+                    buf |= bytes[i] as u32;
+                }
+            }
+
+            // Read bits back out in 6-bit chunks.
+            for i in (0..4).rev() {
+                // We need to do this (4 - i) business bc we need the (i * 6)
+                // calculation to works even when a chunk needs padding (missing a byte).
+                if (4 - i) <= bytes.len() + 1 {
+                    let bits = (buf >> (i * 6)) & 0b111111;
+                    let ch = alpha[bits as usize];
+                    base64.push(ch as char);
+                }
+            }
+
+            // Padding.
+            for _ in 0..(3 - bytes.len()) {
+                base64.push('=');
+            }
+        }
+
+        base64
     }
 
     /// If the underlying value for `T` does not fit within an
@@ -718,12 +761,6 @@ mod test {
         "0xd0d0c7c5742a63ee3d89fb998ca24c7a",
         "277563472713248395635956171186146266234"
     )]
-    //#[case::from_str_hex5()]
-    //#[case::from_str_hex6()]
-    //#[case::from_str_hex7()]
-    //#[case::from_str_hex8()]
-    //#[case::from_str_hex9()]
-    //#[case::from_str_hex10()]
     fn from_hex_str(#[case] number: &str, #[case] expect: &str) {
         let x = Number::from_hexadecimal_str(number).expect("hex to Number");
         let e = expect.parse::<Number>().expect("control string to parse");
@@ -744,6 +781,16 @@ mod test {
             .parse::<Number>()
             .expect("expected 'expect' argument to parse just fine into Number");
         assert_eq!(x, e, "expected '{e:?}' got '{x:?}'");
+    }
+
+    #[rstest]
+    #[case::b64encode("-2345.1235", "LTIzNDUuMTIzNQ==")]
+    #[case::b64encode("43543.322938403", "NDM1NDMuMzIyOTM4NDAz")]
+    #[case::b64encode("4352439852433149", "NDM1MjQzOTg1MjQzMzE0OQ==")]
+    #[case::b64encode("-000000000.0000000000", "LTAwMDAwMDAwMC4wMDAwMDAwMDAw")]
+    fn base64_encode(#[case] s: &str, #[case] expect: &str) {
+        let encoded = Number::base64_encode(s);
+        assert_eq!(encoded, expect, "expected '{expect}' got '{encoded}'");
     }
 
     #[test]
