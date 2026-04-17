@@ -406,12 +406,12 @@ impl Number {
     }
 
     /// Encodes a string into base64 encoded string.
-    /// ```rust,ignore,no_run
+    /// ```rust,ignore
     /// use calcinum::Number;
-    /// # #![allow(dead_code)]
     /// let encoded = Number::base64_encode("abcd");
     /// assert_eq!(encoded, "YWJjZA==");
     /// ```
+    #[allow(dead_code)]
     pub(crate) fn base64_encode(s: &str) -> String {
         let alpha = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
         let mut base64 = String::new();
