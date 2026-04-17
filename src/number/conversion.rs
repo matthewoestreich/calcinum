@@ -406,8 +406,9 @@ impl Number {
     }
 
     /// Encodes a string into base64 encoded string.
-    /// ```rust,ignore
+    /// ```rust,ignore,no_run
     /// use calcinum::Number;
+    /// # #![allow(dead_code)]
     /// let encoded = Number::base64_encode("abcd");
     /// assert_eq!(encoded, "YWJjZA==");
     /// ```
