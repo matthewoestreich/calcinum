@@ -152,28 +152,16 @@ impl Number {
             return false;
         }
 
-        let mut iter = s.chars();
+        let s = s.strip_prefix('-').unwrap_or(s);
         let mut seen_decimal = false;
 
-        if s.starts_with('-') {
-            iter.next();
-        }
-
-        for c in iter {
+        for c in s.chars() {
             match c {
                 // We should not see any other '-' signs.
                 '-' => return false,
-                '.' => {
-                    if seen_decimal {
-                        return false;
-                    }
-                    seen_decimal = true;
-                }
-                _ => {
-                    if !c.is_ascii_digit() {
-                        return false;
-                    }
-                }
+                '.' if !seen_decimal => seen_decimal = true,
+                c if c.is_ascii_digit() => {}
+                _ => return false,
             }
         }
 
