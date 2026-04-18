@@ -706,25 +706,21 @@ impl FromStr for Number {
     type Err = NumberError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        // If we were given a binary string.
         if let Ok(n) = Number::from_binary_str(s) {
             return Ok(n);
         }
-        // If we were given a hexadecimal string.
         if let Ok(n) = Number::from_hexadecimal_str(s) {
             return Ok(n);
         }
         if let Ok(n) = Number::from_base64_str(s) {
             return Ok(n);
         }
-        // If we were given a decimal string.
         if let Ok(i) = s.parse::<BigInt>() {
             return Ok(Number::Int(i));
         }
         if let Ok(d) = s.parse::<BigDecimal>() {
             return Ok(Number::Decimal(d));
         }
-        // Fall through to error.
         Err(NumberError::Parsing {
             value: s.to_string(),
         })
