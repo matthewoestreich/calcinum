@@ -326,6 +326,56 @@ impl Number {
         })
     }
 
+    /// Cosine function. Computes the unit-circle x-coordinate for a given angle in radians.
+    ///
+    /// We attempt to retain precision throughout these conversions. If `self` is considered
+    /// `NaN` or `Infinity`, we fall back to using 64-bits of precision.
+    ///
+    /// ```rust
+    /// use calcinum::Number;
+    ///
+    /// let a = Number::from(12);
+    /// let expect = "0.84385395873249210465".parse::<Number>().expect("Number::Int");
+    /// assert_eq!(a.cos(), Ok(expect));
+    /// ```
+    pub fn cos(&self) -> Result<Number, NumberError> {
+        match self {
+            Number::Int(i) => Self::cos_str(&i.to_string()),
+            Number::Decimal(d) => Self::cos_str(&d.to_string()),
+        }
+    }
+
+    /// Same as [`cos`](crate::Number#method.cos), but with `self` assignment.
+    ///
+    /// Cosine function. Computes the unit-circle x-coordinate for a given angle in radians.
+    ///
+    /// We attempt to retain precision throughout these conversions. If `self` is considered
+    /// `NaN` or `Infinity`, we fall back to using 64-bits of precision.
+    ///
+    /// ```rust
+    /// use calcinum::Number;
+    ///
+    /// let mut a = Number::from(12);
+    /// let _possible_error = a.cos_assign();
+    /// let expect = "0.84385395873249210465".parse::<Number>().expect("Number::Int");
+    /// assert_eq!(a, expect);
+    /// ```
+    pub fn cos_assign(&mut self) -> Result<(), NumberError> {
+        *self = self.cos()?;
+        Ok(())
+    }
+
+    /// Please see comments on `cos` method.
+    fn cos_str(s: &str) -> Result<Number, NumberError> {
+        ASTRO_CONSTS.with(|cc| {
+            let og_bf = s.to_string().parse::<BigFloat>()?;
+            let prec = og_bf.precision().unwrap_or(64).max(64);
+            let cos_bf = og_bf.cos(prec, AstroRoundingMode::None, &mut cc.borrow_mut());
+            let result = cos_bf.to_string().parse::<BigDecimal>()?;
+            Ok(Number::Decimal(result))
+        })
+    }
+
     /// Tangent function. Computes the unit-circle y/x ratio for a given angle in radians.
     ///
     /// Temporarily converts the underlying value to `BigFloat` to perform trigonometric
@@ -452,7 +502,23 @@ impl Number {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::number::test::expand_scientific;
     use rstest::*;
+
+    #[test]
+    fn foofoo() {
+        let n = "-0.0".parse::<Number>().unwrap();
+        println!("{n}");
+        ASTRO_CONSTS.with(|cc| {
+            let bi = "-0.0".parse::<BigDecimal>().unwrap();
+            let bf = bi.to_string().parse::<BigFloat>().unwrap();
+            let a = bf.cos(64, astro_float::RoundingMode::None, &mut cc.borrow_mut());
+            println!(
+                "{a}\nexpanded=\n{}\n0.8438539587324921046539552931736217831680871526045650125881421127",
+                expand_scientific(&a.to_string())
+            );
+        });
+    }
 
     #[rstest]
     #[case::abs1("10", "10")]
@@ -546,6 +612,22 @@ mod test {
     }
 
     #[rstest]
+    #[case::cos1("12", "0.84385395873249210465")]
+    #[case::cos2("-34.2", "-0.9367678684526686154")]
+    #[case::cos3("-0", "1.0")]
+    #[case::cos4("0", "1.0")]
+    #[case::cos5("0.0", "1.0")]
+    #[case::cos6("-0.0", "1.0")]
+    #[case::cos7("27", "-0.29213880873383619335")]
+    #[case::cos8("-27", "-0.29213880873383619335")]
+    fn cos(#[case] n: &str, #[case] expect: &str) {
+        let x = n.parse::<Number>().expect("cos");
+        let e = expect.parse::<Number>().expect("expect");
+        let r = x.cos().expect("no cos errors");
+        assert_eq!(r, e, "expected cos {e} got cos {r}");
+    }
+
+    #[rstest]
     #[case::tan1("12", "-0.63585992866158079246")]
     #[case::tan2("-12", "0.63585992866158079246")]
     #[case::tan3("5.5", "-0.99558405221388501766")]
@@ -566,7 +648,7 @@ mod test {
     fn tan(#[case] n: &str, #[case] expect: &str) {
         let x = n.parse::<Number>().unwrap();
         let e = expect.parse::<Number>().unwrap();
-        let r = x.tan().expect("no errors in sin");
+        let r = x.tan().expect("no errors in tan");
         assert_eq!(r, e, "expected {e} got {r}");
     }
 

@@ -71,6 +71,7 @@ For example: `abs(1 + ceil(100 / 33) - (12 + 13)) / 2`
 | `floor`  | Greatest integer less than or equal to a given number.                                                                                                                                 |
 | `ceil`   | Smallest integer greater than or equal to a given number.                                                                                                                              |
 | `sin`    | Sine function. Computes the unit-circle y-coordinate for a given angle in radians.                                                                                                     |
+| `cos`    | Cosine function. Computes the unit-circle x-coordinate for a given angle in radians.                                                                                                   |
 | `tan`    | Tangent function. Computes the unit-circle y/x ratio for a given angle in radians.                                                                                                     |
 | `round`  | Rounds a number to the nearest integer value (0 decimal places). If the value is equidistant between two integers, it is rounded toward the nearest even integer (half-even rounding). |
 

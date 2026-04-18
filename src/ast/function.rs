@@ -15,6 +15,7 @@ pub enum Function {
     Floor,
     Ceil,
     Sin,
+    Cos,
     Tan,
     Round,
 }
@@ -28,6 +29,7 @@ impl FromStr for Function {
             "floor" => Self::Floor,
             "ceil" => Self::Ceil,
             "sin" => Self::Sin,
+            "cos" => Self::Cos,
             "tan" => Self::Tan,
             "round" => Self::Round,
             _ => {
@@ -49,6 +51,7 @@ impl fmt::Display for Function {
             Function::Floor => write!(f, "floor"),
             Function::Ceil => write!(f, "ceil"),
             Function::Sin => write!(f, "sin"),
+            Function::Cos => write!(f, "cos"),
             Function::Tan => write!(f, "tan"),
             Function::Round => write!(f, "round"),
         }

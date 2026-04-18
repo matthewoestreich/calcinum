@@ -122,3 +122,39 @@ impl From<&Number> for NumberOrder {
         }
     }
 }
+
+#[cfg(test)]
+mod test {
+    pub(crate) fn expand_scientific(s: &str) -> String {
+        let (mantissa, exp) = s
+            .split_once('e')
+            .or_else(|| s.split_once('E'))
+            .unwrap_or((s, ""));
+
+        if exp.is_empty() {
+            return s.to_string();
+        }
+
+        let exp: isize = exp.parse().unwrap_or(0);
+        let mut parts = mantissa.split('.');
+        let int_part = parts.next().unwrap_or("0");
+        let frac_part = parts.next().unwrap_or("");
+        let mut digits: String = format!("{}{}", int_part, frac_part);
+        let point_pos = int_part.len() as isize;
+        let new_pos = point_pos + exp;
+
+        if new_pos <= 0 {
+            let mut result = "0.".to_string();
+            result.push_str(&"0".repeat((-new_pos) as usize));
+            result.push_str(&digits);
+            return result;
+        }
+        if new_pos as usize >= digits.len() {
+            digits.push_str(&"0".repeat(new_pos as usize - digits.len()));
+            return digits;
+        }
+
+        digits.insert(new_pos as usize, '.');
+        digits
+    }
+}

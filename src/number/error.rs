@@ -34,7 +34,7 @@ impl fmt::Display for NumberError {
 impl From<ParseBigDecimalError> for NumberError {
     fn from(value: ParseBigDecimalError) -> Self {
         Self::Parsing {
-            value: value.to_string(),
+            value: format!("[decimal] {value:?}"),
         }
     }
 }
@@ -42,7 +42,7 @@ impl From<ParseBigDecimalError> for NumberError {
 impl From<ParseBigIntError> for NumberError {
     fn from(value: ParseBigIntError) -> Self {
         Self::Parsing {
-            value: value.to_string(),
+            value: format!("[int] {value:?}"),
         }
     }
 }
