@@ -491,21 +491,6 @@ mod test {
     use crate::number::test::expand_scientific;
     use rstest::*;
 
-    #[test]
-    fn foofoo() {
-        let n = "-0.0".parse::<Number>().unwrap();
-        println!("{n}");
-        ASTRO_CONSTS.with(|cc| {
-            let bi = "-0.0".parse::<BigDecimal>().unwrap();
-            let bf = bi.to_string().parse::<BigFloat>().unwrap();
-            let a = bf.cos(64, astro_float::RoundingMode::None, &mut cc.borrow_mut());
-            println!(
-                "{a}\nexpanded=\n{}\n0.8438539587324921046539552931736217831680871526045650125881421127",
-                expand_scientific(&a.to_string())
-            );
-        });
-    }
-
     #[rstest]
     #[case::abs1("10", "10")]
     #[case::abs1_1("10.123", "10.123")]
