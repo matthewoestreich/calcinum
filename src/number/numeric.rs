@@ -67,12 +67,14 @@ impl Number {
     ///
     /// <div class="warning">
     ///
-    /// **Warning:** even though this method takes an <code>i64</code>, if <code>self</code> is variant
-    /// <code>Number::Int(_)</code>, then the exponent must fit in <code>u32</code>!
+    /// # Warning
     ///
-    /// If your exponent must fit into <code>i64</code> you can convert your
-    /// <code> Number::Int(..)</code> instance into <code>Number::Decimal(..)</code> by calling
-    /// <code>my_number_int.promote()</code> and then calling <code>my_number_int.pow(some_i64)</code>
+    /// Even though this method takes an `i64`, if `self` is variant
+    /// `Number::Int(_)`, then the exponent must fit in `u32`!
+    ///
+    /// If your exponent must fit into `i64` you can convert your
+    /// `Number::Int(..)` instance into `Number::Decimal(..)` by calling
+    /// `my_number_int.promote()` and then calling `my_number_int.pow(some_i64)`
     ///
     /// </div>
     ///
@@ -110,12 +112,14 @@ impl Number {
     ///
     /// <div class="warning">
     ///
-    /// **Warning:** even though this method takes an <code>i64</code>, if <code>self</code> is variant
-    /// <code>Number::Int(_)</code>, then the exponent must fit in <code>u32</code>!
+    /// # Warning
     ///
-    /// If your exponent must fit into <code>i64</code> you can convert your
-    /// <code>Number::Int(..)</code> instance into <code>Number::Decimal(..)</code> by calling
-    /// <code>my_number_int.promote()</code> and then calling <code>my_number_int.pow_assign(some_i64)</code>
+    /// Even though this method takes an `i64`, if `self` is variant
+    /// `Number::Int(_)`, then the exponent must fit in `u32`!
+    ///
+    /// If your exponent must fit into `i64` you can convert your
+    /// `Number::Int(..)` instance into `Number::Decimal(..)` by calling
+    /// `my_number_int.promote()` and then calling `my_number_int.pow(some_i64)`
     ///
     /// </div>
     ///
@@ -142,7 +146,7 @@ impl Number {
         Ok(())
     }
 
-    /// The absolute, or non-negative, distance of `self` from 0.
+    /// The absolute, or non-negative distance of `self` from 0.
     ///
     /// ```rust
     /// use calcinum::Number;
@@ -272,10 +276,7 @@ impl Number {
 
     /// Sine function. Computes the unit-circle y-coordinate for a given angle in radians.
     ///
-    /// Temporarily converts the underlying value to `BigFloat` to perform trigonometric
-    /// operations, then converts the result back into `Number::Decimal(_)`.
-    ///
-    /// We attempt to retain precision throughout these conversions. If `self` is considered
+    /// We attempt to retain native precision during calculations. If `self` is considered
     /// `NaN` or `Infinity`, we fall back to using 64-bits of precision.
     ///
     /// ```rust
@@ -296,10 +297,7 @@ impl Number {
     ///
     /// Sine function. Computes the unit-circle y-coordinate for a given angle in radians.
     ///
-    /// Temporarily converts the underlying value to `BigFloat` to perform trigonometric
-    /// operations, then converts the result back into `Number::Decimal(_)`.
-    ///
-    /// We attempt to retain precision throughout these conversions. If `self` is considered
+    /// We attempt to retain native precision during calculations. If `self` is considered
     /// `NaN` or `Infinity`, we fall back to using 64-bits of precision.
     ///
     /// ```rust
@@ -328,7 +326,7 @@ impl Number {
 
     /// Cosine function. Computes the unit-circle x-coordinate for a given angle in radians.
     ///
-    /// We attempt to retain precision throughout these conversions. If `self` is considered
+    /// We attempt to retain native precision during calculations. If `self` is considered
     /// `NaN` or `Infinity`, we fall back to using 64-bits of precision.
     ///
     /// ```rust
@@ -349,7 +347,7 @@ impl Number {
     ///
     /// Cosine function. Computes the unit-circle x-coordinate for a given angle in radians.
     ///
-    /// We attempt to retain precision throughout these conversions. If `self` is considered
+    /// We attempt to retain native precision during calculations. If `self` is considered
     /// `NaN` or `Infinity`, we fall back to using 64-bits of precision.
     ///
     /// ```rust
@@ -378,10 +376,7 @@ impl Number {
 
     /// Tangent function. Computes the unit-circle y/x ratio for a given angle in radians.
     ///
-    /// Temporarily converts the underlying value to `BigFloat` to perform trigonometric
-    /// operations, then converts the result back into `Number::Decimal(_)`.
-    ///
-    /// We attempt to retain precision throughout these conversions. If `self` is considered
+    /// We attempt to retain native precision during calculations. If `self` is considered
     /// `NaN` or `Infinity`, we fall back to using 64-bits of precision.
     ///
     /// ```rust
@@ -402,10 +397,7 @@ impl Number {
     ///
     /// Tangent function. Computes the unit-circle y/x ratio for a given angle in radians.
     ///
-    /// Temporarily converts the underlying value to `BigFloat` to perform trigonometric
-    /// operations, then converts the result back into `Number::Decimal(_)`.
-    ///
-    /// We attempt to retain precision throughout these conversions. If `self` is considered
+    /// We attempt to retain native precision during calculations. If `self` is considered
     /// `NaN` or `Infinity`, we fall back to using 64-bits of precision.
     ///
     /// ```rust
@@ -439,9 +431,6 @@ impl Number {
     /// Variant is not coerced. If you call `.ceil()` with variant `Number::Int`,
     /// we just clone it and return it.
     ///
-    /// If the result of rounding a `Number::Decimal` is a whole number, we still keep
-    /// the result as `Number::Decimal`.
-    ///
     /// ```rust
     /// use calcinum::Number;
     ///
@@ -469,9 +458,6 @@ impl Number {
     ///
     /// Variant is not coerced. If you call `.ceil()` with variant `Number::Int`,
     /// this is essentially a no-op.
-    ///
-    /// If the result of rounding a `BigDecimalRoundingModeber::Decimal` is a whole number, we still keep
-    /// the result as `Number::Decimal`.
     ///
     /// ```rust
     /// use calcinum::Number;

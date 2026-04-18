@@ -28,11 +28,6 @@ impl Number {
     /// the integer part and fractional part separately, then combine them via a decimal
     /// while preserving the sign.
     ///
-    /// **`Number::Decimal(_)` Variant:**
-    ///
-    /// - **If we are unable to convert the integer part to a binary string we return `self.to_string()` instead.**
-    /// - **If we are unable to convert the fractional part (if one exists) we only return the integer part**
-    ///
     /// ```rust
     /// use calcinum::Number;
     ///
@@ -48,11 +43,6 @@ impl Number {
     /// We format decimals that contain a fractional part literally. Meaning, we format
     /// the integer part and fractional part separately, then combine them via a decimal
     /// while preserving the sign.
-    ///
-    /// **`Number::Decimal(_)` Variant:**
-    ///
-    /// - **If we are unable to convert the integer part to a hexadecimal string we return `self.to_string()` instead.**
-    /// - **If we are unable to convert the fractional part (if one exists) we only return the integer part**
     ///
     /// ```rust
     /// use calcinum::Number;
