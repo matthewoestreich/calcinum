@@ -30,62 +30,75 @@ impl Number {
         })
     }
 
-    /// Radians conversion function. Converts an angle from degrees to radians,
-    /// where one full rotation equals 2π radians.
+    /// Square root function. Computes the non-negative value whose square equals the
+    /// given input, defined as x^(1/2).
+    ///
+    ///  - For `Number::Int` variants, we attempt integer sqrt and check if the result
+    ///    is a perfect square. If it is, we return `Number::Int` variant, if not we
+    ///    convert the original `Number::Int` variant to `Number::Decimal` and retrun
+    ///    the decimal result.
+    ///  - If the value of `self` is `< 0` this method will return `None`.
     ///
     /// ```rust
     /// use calcinum::Number;
     ///
     /// let a = Number::from(12);
-    /// let expect = "0.2094395102393195492".parse::<Number>().expect("Number::Decimal");
-    /// assert_eq!(a.rad(64), Ok(expect));
+    ///
+    /// let n = "3.464101615137754587054892683011744733885610507620761256111613958903866033817600074162292373514497151";
+    /// let expect = n.parse::<Number>().expect("Number::Decimal");
+    ///
+    /// assert_eq!(a.sqrt(), Some(expect));
     /// ```
-    pub fn rad(&self, precision: usize) -> Result<Number, NumberError> {
-        ASTRO_CONSTS.with(|cc| {
-            let mut ctx = cc.borrow_mut();
-
-            let bf = match self {
-                Number::Int(i) => {
-                    let deg = i.to_string().parse::<BigFloat>()?;
-                    let pi = ctx.pi(precision, AstroRoundingMode::None);
-                    deg.mul(
-                        &(pi.div(&BigFloat::from(180), precision, AstroRoundingMode::None)),
-                        precision,
-                        AstroRoundingMode::None,
-                    )
+    pub fn sqrt(&self) -> Option<Number> {
+        match self {
+            Number::Int(i) => {
+                if i < &num_bigint::BigInt::ZERO {
+                    return None;
                 }
-                Number::Decimal(d) => {
-                    let deg = d.to_string().parse::<BigFloat>()?;
-                    let pi = ctx.pi(precision, AstroRoundingMode::None);
-                    deg.mul(
-                        &(pi.div(&BigFloat::from(180), precision, AstroRoundingMode::None)),
-                        precision,
-                        AstroRoundingMode::None,
-                    )
-                }
-            };
 
-            let bd = bf.to_string().parse::<BigDecimal>()?;
-            Ok(Number::Decimal(bd))
-        })
+                let k = i.sqrt();
+                // If is perfect square
+                if &k * &k == *i {
+                    return Some(Number::Int(k));
+                }
+
+                let bd = BigDecimal::from_bigint(i.clone(), 0);
+                bd.sqrt().map(Number::Decimal)
+            }
+            Number::Decimal(d) => d.sqrt().map(Number::Decimal),
+        }
     }
 
-    /// Same as [`rad`](crate::Number#method.abs), but with `self` assignment.
+    /// Same as [`sqrt`](crate::Number#method.sqr), but with `self` assignment.
     ///
-    /// Radians conversion function. Converts an angle from degrees to radians,
-    /// where one full rotation equals 2π radians.
+    /// Square root function. Computes the non-negative value whose square equals the
+    /// given input, defined as x^(1/2).
+    ///
+    /// - Returns `true` if the value of `self` is `>= 0` (including `-0`), and therefore `self` was modified.
+    /// - Returns `false` if the value of `self` is `< 0` and therefore `self` was not modified
+    ///  - For `Number::Int` variants, we attempt integer sqrt and check if the result
+    ///    is a perfect square. If it is, we modify `self` to be `Number::Int` variant, if not we
+    ///    convert `self` to `Number::Decimal` and retrun the decimal result.
     ///
     /// ```rust
     /// use calcinum::Number;
     ///
     /// let mut a = Number::from(12);
-    /// let _possible_error = a.rad_assign(64);
-    /// let expect = "0.2094395102393195492".parse::<Number>().expect("Number::Decimal");
+    ///
+    /// let was_modified = a.sqrt_assign();
+    /// assert!(was_modified);
+    ///
+    /// let n = "3.464101615137754587054892683011744733885610507620761256111613958903866033817600074162292373514497151";
+    /// let expect = n.parse::<Number>().expect("Number::Decimal");
+    ///
     /// assert_eq!(a, expect);
     /// ```
-    pub fn rad_assign(&mut self, precision: usize) -> Result<(), NumberError> {
-        *self = self.rad(precision)?;
-        Ok(())
+    pub fn sqrt_assign(&mut self) -> bool {
+        if let Some(s) = self.sqrt() {
+            *self = s;
+            return true;
+        }
+        false
     }
 
     /// Get raw digit count, excluding `-` or `.` symbols.
@@ -638,6 +651,58 @@ impl Number {
         })
     }
 
+    /// Radians conversion function. Converts an angle from degrees to radians,
+    /// where one full rotation equals 2π radians.
+    ///
+    /// ```rust
+    /// use calcinum::Number;
+    ///
+    /// let a = Number::from(12);
+    /// let expect = "0.2094395102393195492".parse::<Number>().expect("Number::Decimal");
+    /// assert_eq!(a.rad(64), Ok(expect));
+    /// ```
+    pub fn rad(&self, precision: usize) -> Result<Number, NumberError> {
+        match self {
+            Number::Int(i) => Self::rad_str(&i.to_string(), precision),
+            Number::Decimal(d) => Self::rad_str(&d.to_string(), precision),
+        }
+    }
+
+    /// Same as [`rad`](crate::Number#method.rad), but with `self` assignment.
+    ///
+    /// Radians conversion function. Converts an angle from degrees to radians,
+    /// where one full rotation equals 2π radians.
+    ///
+    /// ```rust
+    /// use calcinum::Number;
+    ///
+    /// let mut a = Number::from(12);
+    /// let _possible_error = a.rad_assign(64);
+    /// let expect = "0.2094395102393195492".parse::<Number>().expect("Number::Decimal");
+    /// assert_eq!(a, expect);
+    /// ```
+    pub fn rad_assign(&mut self, precision: usize) -> Result<(), NumberError> {
+        *self = self.rad(precision)?;
+        Ok(())
+    }
+
+    /// Please see comments on `rad` method.
+    fn rad_str(s: &str, precision: usize) -> Result<Number, NumberError> {
+        ASTRO_CONSTS.with(|cc| {
+            let mut ctx = cc.borrow_mut();
+            let deg = s.to_string().parse::<BigFloat>()?;
+            let pi = ctx.pi(precision, AstroRoundingMode::None);
+            let bf = deg.mul(
+                &(pi.div(&BigFloat::from(180), precision, AstroRoundingMode::None)),
+                precision,
+                AstroRoundingMode::None,
+            );
+
+            let bd = bf.to_string().parse::<BigDecimal>()?;
+            Ok(Number::Decimal(bd))
+        })
+    }
+
     /// Return `self` rounded to ‘round_digits’ precision after the decimal point.
     /// Rounding mode is half even; round to ‘nearest neighbor’, if equidistant, round
     /// towards nearest even digit.
@@ -940,5 +1005,87 @@ mod test {
         let e = expect.parse::<Number>().expect("Number");
         let r = n.rad(64).expect("radians");
         assert_eq!(e, r, "got rad '{r}' expected rad '{e}'");
+    }
+
+    #[rstest]
+    #[case::sqrt(
+        "12",
+        Some(
+            "3.464101615137754587054892683011744733885610507620761256111613958903866033817600074162292373514497151"
+        )
+    )]
+    #[case::sqrt2(
+        "348",
+        Some(
+            "18.65475810617763009110895108464111396655248138838330934211239459689356909761449935682844112582376403"
+        )
+    )]
+    #[case::sqrt3("-67", None)]
+    #[case::sqrt4("-67.83774", None)]
+    #[case::sqrt5("-0", Some("0"))]
+    #[case::sqrt6(
+        "361145983",
+        Some(
+            "19003.84126959599712810684778150386238300698460094123051032300186996710474995016592670325251905019092"
+        )
+    )]
+    #[case::sqrt7(
+        "361145983.342101",
+        Some(
+            "19003.84127859683530250025138159042862078925397197322539191524223694051978968383026136495278639693128"
+        )
+    )]
+    #[case::sqrt8("-361145983.342101", None)]
+    #[case::sqrt9("0", Some("0"))]
+    #[case::sqrt10("1000000000000000000000000000000000000", Some("1000000000000000000"))]
+    #[case::sqrt11(
+        "152415787532388367501905199875019052100",
+        Some("12345678901234567890")
+    )]
+    #[case::sqrt12("18446744073709551616", Some("4294967296"))]
+    #[case::sqrt13(
+        "1524157875323883675049535156253619878750190519987760144",
+        Some(
+            "1234567890123456789012345678.900000000000000000000104586710891280398115651622852534354668002168807820"
+        )
+    )]
+    #[case::sqrt14(
+        "1000000000000000000000000000000000000000000000000000000",
+        Some("1000000000000000000000000000")
+    )]
+    fn sqrt_and_sqrt_assign(#[case] number: &str, #[case] expect: Option<&str>) {
+        let n = number.parse::<Number>().expect("Number");
+        let r = n.sqrt();
+
+        match expect {
+            Some(es) => {
+                let f = r.expect("Some");
+                let e = es.parse::<Number>().expect("Number");
+                assert_eq!(e, f, "expected sqrt '{e}' got sqrt '{f}'");
+            }
+            // We expected None, we also expect `number` to be None
+            None => assert!(r.is_none(), "expected sqrt() to return None : got '{r:?}'"),
+        };
+
+        /*
+         * sqrt_assign
+         * Allowing a "double test" here bc the test cases are massive waste of space.
+         */
+
+        let mut n = number.parse::<Number>().expect("Number");
+        let success = n.sqrt_assign();
+
+        match expect {
+            Some(es) => {
+                let e = es.parse::<Number>().expect("Number");
+                assert_eq!(e, n, "expected sqrt_assign '{e}' got sqrt_assign '{n}'");
+            }
+            // We expected None, we expect sqrt_assign to also fail, but in sqrt_assign
+            // it returns false not None.
+            None => assert!(
+                !success,
+                "expected sqrt_assign() to return false : got '{success}'"
+            ),
+        };
     }
 }

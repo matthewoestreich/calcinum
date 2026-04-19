@@ -95,10 +95,11 @@
 //! | `sin`    | Sine (radians) |
 //! | `cos`    | Cosine (radians) |
 //! | `tan`    | Tangent (radians) |
-//! | `sinh`   | Hyperbolic sine function |
-//! | `cosh`   | Hyperbolic cosine function |
-//! | `tanh`   | Hyperbolic tangent function |
-//! | `rad`    | Radians conversion function |
+//! | `sinh`   | Hyperbolic sine (radians) |
+//! | `cosh`   | Hyperbolic cosine (radians) |
+//! | `tanh`   | Hyperbolic tangent (radians) |
+//! | `rad`    | Radians conversion (degrees to radians) |
+//! | `sqrt`   | Square root |
 //!
 //! # Constants
 //!
