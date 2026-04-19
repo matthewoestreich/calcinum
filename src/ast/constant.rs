@@ -6,14 +6,20 @@ use varienum::variants_vec;
 #[derive(Debug, Clone)]
 pub enum Constant {
     PI,
+    EULER,
 }
 
+//
+// IF YOU'RE ADDING A NEW CONSTANT, DON'T FORGET
+// TO ADD IT TO THE `from_str` MATCH BELOW!!!
+//
 impl FromStr for Constant {
     type Err = ParserError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Ok(match s {
             "pi" => Self::PI,
+            "e" => Self::EULER,
             _ => {
                 return Err(ParserError::UnrecognizedConstant {
                     name: s.to_string(),
@@ -30,6 +36,7 @@ impl fmt::Display for Constant {
             // All constants should be lower case!
             //
             Constant::PI => write!(f, "pi"),
+            Constant::EULER => write!(f, "e"),
         }
     }
 }

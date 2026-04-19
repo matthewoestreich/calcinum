@@ -4,7 +4,7 @@ use bigdecimal::{BigDecimal, RoundingMode as BigDecimalRoundingMode};
 use num_traits::Signed;
 
 impl Number {
-    /// Returns the numeric constant `pi` with specified precision.
+    /// The numeric constant `pi` with specified precision.
     /// This method returns an error if the result of pi is NaN or Inf.
     ///
     /// ```rust
@@ -20,13 +20,38 @@ impl Number {
     /// ```
     pub fn pi(precision: usize) -> Result<Number, NumberError> {
         ASTRO_CONSTS.with(|cc| {
-            let mut ctx = cc.borrow_mut();
-            let pi_bf = ctx.pi(precision, AstroRoundingMode::None);
+            let pi_bf = cc.borrow_mut().pi(precision, AstroRoundingMode::None);
             if pi_bf.is_nan() || pi_bf.is_inf() {
                 return Err(NumberError::IsNaNOrInfinity);
             }
             let pi_bd = pi_bf.to_string().parse::<BigDecimal>()?;
             Ok(Number::Decimal(pi_bd))
+        })
+    }
+
+    /// The numeric constant `e` (Euler’s number) with specified precision.
+    /// Returns an error if the specified precision causes the result of the
+    /// calculation for Euler's number to be NaN or Inf.
+    ///
+    /// ```rust
+    /// use calcinum::Number;
+    ///
+    /// let euler_a = Number::e(64);
+    /// let expect_a = "2.7182818284590452352".parse::<Number>().expect("Number::Decimal");
+    /// assert_eq!(euler_a, Ok(expect_a));
+    ///
+    /// let euler_b = Number::e(128);
+    /// let expect_b = "2.71828182845904523536028747135266249775".parse::<Number>().expect("Number::Decimal");
+    /// assert_eq!(euler_b, Ok(expect_b));
+    /// ```
+    pub fn e(precision: usize) -> Result<Number, NumberError> {
+        ASTRO_CONSTS.with(|cc| {
+            let eu_bf = cc.borrow_mut().e(precision, AstroRoundingMode::None);
+            if eu_bf.is_nan() || eu_bf.is_inf() {
+                return Err(NumberError::IsNaNOrInfinity);
+            }
+            let eu_bd = eu_bf.to_string().parse::<BigDecimal>()?;
+            Ok(Number::Decimal(eu_bd))
         })
     }
 
@@ -1087,5 +1112,41 @@ mod test {
                 "expected sqrt_assign() to return false : got '{success}'"
             ),
         };
+    }
+
+    #[test]
+    fn euler_const() {
+        let euler64 = Number::e(64).expect("euler64");
+        let expect_euler64 = "2.7182818284590452352".parse::<Number>().expect("Number");
+        assert_eq!(
+            euler64, expect_euler64,
+            "[precision=64] expected euler '{expect_euler64}' got euler '{euler64}'"
+        );
+        let euler128 = Number::e(128).expect("euler128");
+        let expect_euler128 = "2.71828182845904523536028747135266249775"
+            .parse::<Number>()
+            .expect("Number");
+        assert_eq!(
+            euler128, expect_euler128,
+            "[precision=128] expected euler '{expect_euler128}' got euler '{euler128}'"
+        );
+    }
+
+    #[test]
+    fn pi_const() {
+        let pi64 = Number::pi(64).expect("pi64");
+        let expect_pi64 = "3.1415926535897932383".parse::<Number>().expect("Number");
+        assert_eq!(
+            pi64, expect_pi64,
+            "[precision=64] expected pi '{expect_pi64}' got pi '{pi64}'"
+        );
+        let pi128 = Number::pi(128).expect("pi128");
+        let expect_pi128 = "3.1415926535897932384626433832795028842"
+            .parse::<Number>()
+            .expect("Number");
+        assert_eq!(
+            pi128, expect_pi128,
+            "[precision=128] expected pi '{expect_pi128}' got pi '{pi128}'"
+        );
     }
 }

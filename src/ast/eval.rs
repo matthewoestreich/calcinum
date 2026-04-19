@@ -17,6 +17,7 @@ pub fn eval(rpn_tokens: Vec<Token>) -> Result<Number, ParserError> {
             Token::Constant(ref constant) => {
                 stack.push(match constant {
                     Constant::PI => Number::pi(64)?,
+                    Constant::EULER => Number::e(64)?,
                 });
             }
             Token::Function(ref function) => {
@@ -112,6 +113,7 @@ mod test {
     #[case::evaluate_ceil("2 - ceil((10 ** 2) / 33)", "-2.0")]
     #[case::evaluate_pi("pi", "3.1415926535897932383")]
     #[case::evaluate_pi("abs(-pi)", "3.1415926535897932383")]
+    #[case::evaluate_euler("e", "2.7182818284590452352")]
     #[case::evaluate_round("round(pi)", "3.0")]
     #[case::evaluate_round("round((1*13)+(99/(16-3)))", "21.0")]
     #[case::evaluate_cos("cos(12)", "0.84385395873249210465")]

@@ -27,6 +27,10 @@ pub enum Function {
     Sqrt,
 }
 
+//
+// IF YOU'RE ADDING A NEW FUNCTION, DON'T FORGET
+// TO ADD IT TO THE `from_str` MATCH BELOW!!!
+//
 impl FromStr for Function {
     type Err = ParserError;
 
