@@ -383,9 +383,18 @@ impl Number {
     /// assert_eq!(a.sin(), Ok(expect));
     /// ```
     pub fn sin(&self) -> Result<Self, NumberError> {
-        Ok(match self {
-            Number::Int(i) => Self::sin_str(&i.to_string())?,
-            Number::Decimal(d) => Self::sin_str(&d.to_string())?,
+        ASTRO_CONSTS.with(|cc| {
+            let s = match self {
+                Number::Int(i) => i.to_string(),
+                Number::Decimal(d) => d.to_string(),
+            };
+
+            let og_bf = s.parse::<BigFloat>()?;
+            let prec = og_bf.precision().unwrap_or(64);
+            let sin_bf = og_bf.sin(prec, AstroRoundingMode::None, &mut cc.borrow_mut());
+            let result = sin_bf.to_string().parse::<BigDecimal>()?;
+
+            Ok(Number::Decimal(result))
         })
     }
 
@@ -409,17 +418,6 @@ impl Number {
         Ok(())
     }
 
-    /// Please see the comments on `sin` fn.
-    fn sin_str(s: &str) -> Result<Number, NumberError> {
-        ASTRO_CONSTS.with(|cc| {
-            let og_bf = s.to_string().parse::<BigFloat>()?;
-            let prec = og_bf.precision().unwrap_or(64);
-            let sin_bf = og_bf.sin(prec, AstroRoundingMode::None, &mut cc.borrow_mut());
-            let result = sin_bf.to_string().parse::<BigDecimal>()?;
-            Ok(Number::Decimal(result))
-        })
-    }
-
     /// Cosine function. Computes the unit-circle x-coordinate for a given angle in radians.
     ///
     /// We attempt to retain native precision during calculations. If `self` is considered
@@ -433,10 +431,19 @@ impl Number {
     /// assert_eq!(a.cos(), Ok(expect));
     /// ```
     pub fn cos(&self) -> Result<Number, NumberError> {
-        match self {
-            Number::Int(i) => Self::cos_str(&i.to_string()),
-            Number::Decimal(d) => Self::cos_str(&d.to_string()),
-        }
+        ASTRO_CONSTS.with(|cc| {
+            let s = match self {
+                Number::Int(i) => i.to_string(),
+                Number::Decimal(d) => d.to_string(),
+            };
+
+            let og_bf = s.parse::<BigFloat>()?;
+            let prec = og_bf.precision().unwrap_or(64).max(64);
+            let cos_bf = og_bf.cos(prec, AstroRoundingMode::None, &mut cc.borrow_mut());
+            let result = cos_bf.to_string().parse::<BigDecimal>()?;
+
+            Ok(Number::Decimal(result))
+        })
     }
 
     /// Same as [`cos`](crate::Number#method.cos), but with `self` assignment.
@@ -459,17 +466,6 @@ impl Number {
         Ok(())
     }
 
-    /// Please see comments on `cos` method.
-    fn cos_str(s: &str) -> Result<Number, NumberError> {
-        ASTRO_CONSTS.with(|cc| {
-            let og_bf = s.to_string().parse::<BigFloat>()?;
-            let prec = og_bf.precision().unwrap_or(64).max(64);
-            let cos_bf = og_bf.cos(prec, AstroRoundingMode::None, &mut cc.borrow_mut());
-            let result = cos_bf.to_string().parse::<BigDecimal>()?;
-            Ok(Number::Decimal(result))
-        })
-    }
-
     /// Tangent function. Computes the unit-circle y/x ratio for a given angle in radians.
     ///
     /// We attempt to retain native precision during calculations. If `self` is considered
@@ -483,10 +479,19 @@ impl Number {
     /// assert_eq!(a.tan(), Ok(expect));
     /// ```
     pub fn tan(&self) -> Result<Self, NumberError> {
-        match self {
-            Number::Int(i) => Self::tan_str(&i.to_string()),
-            Number::Decimal(d) => Self::tan_str(&d.to_string()),
-        }
+        ASTRO_CONSTS.with(|cc| {
+            let s = match self {
+                Number::Int(i) => i.to_string(),
+                Number::Decimal(d) => d.to_string(),
+            };
+
+            let og_bf = s.parse::<BigFloat>()?;
+            let prec = og_bf.precision().unwrap_or(64);
+            let tan_bf = og_bf.tan(prec, AstroRoundingMode::None, &mut cc.borrow_mut());
+            let result = tan_bf.to_string().parse::<BigDecimal>()?;
+
+            Ok(Number::Decimal(result))
+        })
     }
 
     /// Same as [`tan`](crate::Number#method.tan), but with `self` assignment.
@@ -509,17 +514,6 @@ impl Number {
         Ok(())
     }
 
-    /// Please see the comments on `tan` fn.
-    fn tan_str(s: &str) -> Result<Number, NumberError> {
-        ASTRO_CONSTS.with(|cc| {
-            let og_bf = s.to_string().parse::<BigFloat>()?;
-            let prec = og_bf.precision().unwrap_or(64);
-            let tan_bf = og_bf.tan(prec, AstroRoundingMode::None, &mut cc.borrow_mut());
-            let result = tan_bf.to_string().parse::<BigDecimal>()?;
-            Ok(Number::Decimal(result))
-        })
-    }
-
     /// Hyperbolic sine function. Computes the hyperbolic y-coordinate defined by
     /// (e^x - e^{-x}) / 2 for a given input.
     ///
@@ -534,10 +528,19 @@ impl Number {
     /// assert_eq!(a.sinh(), Ok(expect));
     /// ```
     pub fn sinh(&self) -> Result<Number, NumberError> {
-        match self {
-            Number::Int(i) => Self::sinh_str(&i.to_string()),
-            Number::Decimal(d) => Self::sinh_str(&d.to_string()),
-        }
+        ASTRO_CONSTS.with(|cc| {
+            let s = match self {
+                Number::Int(i) => i.to_string(),
+                Number::Decimal(d) => d.to_string(),
+            };
+
+            let og_bf = s.parse::<BigFloat>()?;
+            let prec = og_bf.precision().unwrap_or(64);
+            let sinh_bf = og_bf.sinh(prec, AstroRoundingMode::None, &mut cc.borrow_mut());
+            let result = sinh_bf.to_string().parse::<BigDecimal>()?;
+
+            Ok(Number::Decimal(result))
+        })
     }
 
     /// Same as [`sinh`](crate::Number#method.sinh), but with `self` assignment.
@@ -561,17 +564,6 @@ impl Number {
         Ok(())
     }
 
-    /// Please see comments on `sinh` method.
-    fn sinh_str(s: &str) -> Result<Number, NumberError> {
-        ASTRO_CONSTS.with(|cc| {
-            let og_bf = s.to_string().parse::<BigFloat>()?;
-            let prec = og_bf.precision().unwrap_or(64);
-            let sinh_bf = og_bf.sinh(prec, AstroRoundingMode::None, &mut cc.borrow_mut());
-            let result = sinh_bf.to_string().parse::<BigDecimal>()?;
-            Ok(Number::Decimal(result))
-        })
-    }
-
     /// Hyperbolic cosine function. Computes the hyperbolic x-coordinate defined by
     ///  (e^x + e^{-x}) / 2 for a given input.
     ///
@@ -586,10 +578,19 @@ impl Number {
     /// assert_eq!(a.cosh(), Ok(expect));
     /// ```
     pub fn cosh(&self) -> Result<Number, NumberError> {
-        match self {
-            Number::Int(i) => Self::cosh_str(&i.to_string()),
-            Number::Decimal(d) => Self::cosh_str(&d.to_plain_string()),
-        }
+        ASTRO_CONSTS.with(|cc| {
+            let s = match self {
+                Number::Int(i) => i.to_string(),
+                Number::Decimal(d) => d.to_string(),
+            };
+
+            let og_bf = s.parse::<BigFloat>()?;
+            let prec = og_bf.precision().unwrap_or(64).max(96);
+            let cosh_bf = og_bf.cosh(prec, AstroRoundingMode::None, &mut cc.borrow_mut());
+            let result = cosh_bf.to_string().parse::<BigDecimal>()?;
+
+            Ok(Number::Decimal(result))
+        })
     }
 
     /// Same as [`cosh`](crate::Number#method.cosh), but with `self` assignment.
@@ -613,17 +614,6 @@ impl Number {
         Ok(())
     }
 
-    /// Please see comments on `cosh` method.
-    fn cosh_str(s: &str) -> Result<Number, NumberError> {
-        ASTRO_CONSTS.with(|cc| {
-            let og_bf = s.to_string().parse::<BigFloat>()?;
-            let prec = og_bf.precision().unwrap_or(64).max(96);
-            let cosh_bf = og_bf.cosh(prec, AstroRoundingMode::None, &mut cc.borrow_mut());
-            let result = cosh_bf.to_string().parse::<BigDecimal>()?;
-            Ok(Number::Decimal(result))
-        })
-    }
-
     /// Hyperbolic tangent function. Computes the ratio of hyperbolic sine to hyperbolic
     /// cosine, defined as sinh(x) / cosh(x), for a given input.
     ///
@@ -638,10 +628,19 @@ impl Number {
     /// assert_eq!(a.tanh(), Ok(expect));
     /// ```
     pub fn tanh(&self) -> Result<Number, NumberError> {
-        match self {
-            Number::Int(i) => Self::tanh_str(&i.to_string()),
-            Number::Decimal(d) => Self::tanh_str(&d.to_plain_string()),
-        }
+        ASTRO_CONSTS.with(|cc| {
+            let s = match self {
+                Number::Int(i) => i.to_string(),
+                Number::Decimal(d) => d.to_string(),
+            };
+
+            let og_bf = s.parse::<BigFloat>()?;
+            let prec = og_bf.precision().unwrap_or(64);
+            let tanh_bf = og_bf.tanh(prec, AstroRoundingMode::None, &mut cc.borrow_mut());
+            let result = tanh_bf.to_string().parse::<BigDecimal>()?;
+
+            Ok(Number::Decimal(result))
+        })
     }
 
     /// Same as [`tanh`](crate::Number#method.tanh), but with `self` assignment.
@@ -665,17 +664,6 @@ impl Number {
         Ok(())
     }
 
-    /// Please see comments on `tanh` method.
-    fn tanh_str(s: &str) -> Result<Number, NumberError> {
-        ASTRO_CONSTS.with(|cc| {
-            let og_bf = s.to_string().parse::<BigFloat>()?;
-            let prec = og_bf.precision().unwrap_or(64);
-            let tanh_bf = og_bf.tanh(prec, AstroRoundingMode::None, &mut cc.borrow_mut());
-            let result = tanh_bf.to_string().parse::<BigDecimal>()?;
-            Ok(Number::Decimal(result))
-        })
-    }
-
     /// Radians conversion function. Converts an angle from degrees to radians,
     /// where one full rotation equals 2π radians.
     ///
@@ -687,10 +675,24 @@ impl Number {
     /// assert_eq!(a.rad(64), Ok(expect));
     /// ```
     pub fn rad(&self, precision: usize) -> Result<Number, NumberError> {
-        match self {
-            Number::Int(i) => Self::rad_str(&i.to_string(), precision),
-            Number::Decimal(d) => Self::rad_str(&d.to_string(), precision),
-        }
+        ASTRO_CONSTS.with(|cc| {
+            let s = match self {
+                Number::Int(i) => i.to_string(),
+                Number::Decimal(d) => d.to_string(),
+            };
+
+            let deg = s.parse::<BigFloat>()?;
+            let pi = cc.borrow_mut().pi(precision, AstroRoundingMode::None);
+            let one_eighty = BigFloat::from(180);
+            let bf = deg.mul(
+                &(pi.div(&one_eighty, precision, AstroRoundingMode::None)),
+                precision,
+                AstroRoundingMode::None,
+            );
+
+            let bd = bf.to_string().parse::<BigDecimal>()?;
+            Ok(Number::Decimal(bd))
+        })
     }
 
     /// Same as [`rad`](crate::Number#method.rad), but with `self` assignment.
@@ -709,23 +711,6 @@ impl Number {
     pub fn rad_assign(&mut self, precision: usize) -> Result<(), NumberError> {
         *self = self.rad(precision)?;
         Ok(())
-    }
-
-    /// Please see comments on `rad` method.
-    fn rad_str(s: &str, precision: usize) -> Result<Number, NumberError> {
-        ASTRO_CONSTS.with(|cc| {
-            let mut ctx = cc.borrow_mut();
-            let deg = s.to_string().parse::<BigFloat>()?;
-            let pi = ctx.pi(precision, AstroRoundingMode::None);
-            let bf = deg.mul(
-                &(pi.div(&BigFloat::from(180), precision, AstroRoundingMode::None)),
-                precision,
-                AstroRoundingMode::None,
-            );
-
-            let bd = bf.to_string().parse::<BigDecimal>()?;
-            Ok(Number::Decimal(bd))
-        })
     }
 
     /// Return `self` rounded to ‘round_digits’ precision after the decimal point.
