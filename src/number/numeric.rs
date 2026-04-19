@@ -33,9 +33,6 @@ impl Number {
     /// Radians conversion function. Converts an angle from degrees to radians,
     /// where one full rotation equals 2π radians.
     ///
-    /// We attempt to retain native precision during calculations. If `self` is considered
-    /// `NaN` or `Infinity`, we fall back to using 64-bits of precision.
-    ///
     /// ```rust
     /// use calcinum::Number;
     ///
@@ -77,9 +74,6 @@ impl Number {
     ///
     /// Radians conversion function. Converts an angle from degrees to radians,
     /// where one full rotation equals 2π radians.
-    ///
-    /// We attempt to retain native precision during calculations. If `self` is considered
-    /// `NaN` or `Infinity`, we fall back to using 64-bits of precision.
     ///
     /// ```rust
     /// use calcinum::Number;
