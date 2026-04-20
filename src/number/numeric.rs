@@ -768,6 +768,20 @@ impl Number {
             *self = self.round(round_digits);
         }
     }
+
+    /// Finds the next multiple of `m` starting at `n`.
+    /// If `n` is already a multiple of `m`, we return `n`.
+    /// If `m` or `n` are 0, we return 0.
+    #[allow(dead_code)]
+    pub(crate) fn next_multiple(m: usize, n: usize) -> usize {
+        if m == 0 || n == 0 {
+            return 0;
+        }
+        if n.is_multiple_of(m) {
+            return n;
+        };
+        ((n / m) + 1) * m
+    }
 }
 
 // ===========================================================================================
@@ -778,6 +792,26 @@ impl Number {
 mod test {
     use super::*;
     use rstest::*;
+
+    #[rstest]
+    #[case::next_mult1(3, 34, 36)]
+    #[case::next_mult2(103, 34, 103)]
+    #[case::next_mult3(5, 0, 0)]
+    #[case::next_mult4(1, 999, 999)]
+    #[case::next_mult5(10, 10, 10)]
+    #[case::next_mult6(10, 11, 20)]
+    #[case::next_mult7(7, 14, 14)]
+    #[case::next_mult8(7, 15, 21)]
+    #[case::next_mult9(8, 64, 64)]
+    #[case::next_mult10(8, 65, 72)]
+    #[case::next_mult11(1024, 1_000_000, 1_000_448)]
+    #[case::next_mult_edge(13, 26, 26)]
+    #[case::next_mult_div_zero(0, 13, 0)]
+    #[case::next_mult_div_zero(13, 0, 0)]
+    fn next_multiple(#[case] m: usize, #[case] n: usize, #[case] expect: usize) {
+        let a = Number::next_multiple(m, n);
+        assert_eq!(a, expect, "expected {expect} got {a}");
+    }
 
     #[rstest]
     #[case::abs1("10", "10")]

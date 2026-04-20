@@ -1,5 +1,5 @@
 use crate::Number;
-use num_traits::Zero;
+use num_traits::{Signed, Zero};
 
 impl Number {
     /// Returns `true` if `self` is equal to zero, and `false` if it is not.
@@ -42,6 +42,66 @@ impl Number {
     /// ```
     pub fn is_decimal(&self) -> bool {
         matches!(self, Number::Decimal(_))
+    }
+
+    /// Returns `true` if the number is negative, `false` if not.
+    ///
+    /// ```rust
+    /// use calcinum::Number;
+    ///
+    /// let a = Number::from(1);
+    /// assert!(!a.is_negative());
+    ///
+    /// let b = Number::from(-1);
+    /// assert!(b.is_negative());
+    ///
+    /// // `0` is neither positive nor negative.
+    /// let c = Number::from(0);
+    /// assert!(!c.is_negative() && !c.is_positive());
+    /// // Use `.is_zero()` method instead.
+    /// assert!(c.is_zero());
+    ///
+    /// // `-0` is neither positive nor negative.
+    /// let d = Number::from(-0);
+    /// assert!(!d.is_negative() && !d.is_positive());
+    /// // Use `.is_zero()` method instead.
+    /// assert!(d.is_zero());
+    /// ```
+    pub fn is_negative(&self) -> bool {
+        match self {
+            Number::Int(i) => i.is_negative(),
+            Number::Decimal(d) => d.is_negative(),
+        }
+    }
+
+    /// Returns `true` if the number is positive, `false` if not.
+    ///
+    /// ```rust
+    /// use calcinum::Number;
+    ///
+    /// let a = Number::from(1);
+    /// assert!(a.is_positive());
+    ///
+    /// let b = Number::from(-1);
+    /// assert!(!b.is_positive());
+    ///
+    /// // `0` is neither positive nor negative.
+    /// let c = Number::from(0);
+    /// assert!(!c.is_negative() && !c.is_positive());
+    /// // Use `.is_zero()` method instead.
+    /// assert!(c.is_zero());
+    ///
+    /// // `-0` is neither positive nor negative.
+    /// let d = Number::from(-0);
+    /// assert!(!d.is_negative() && !d.is_positive());
+    /// // Use `.is_zero()` method instead.
+    /// assert!(d.is_zero());
+    /// ```
+    pub fn is_positive(&self) -> bool {
+        match self {
+            Number::Int(i) => i.is_positive(),
+            Number::Decimal(d) => d.is_positive(),
+        }
     }
 }
 

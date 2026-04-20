@@ -1,4 +1,5 @@
 pub mod error;
+pub mod fmt;
 
 #[macro_use]
 mod macros;
@@ -6,7 +7,6 @@ mod arithmetic;
 mod bitwise;
 mod comparison;
 mod conversion;
-mod format;
 mod hexchar;
 mod numeric;
 
@@ -16,7 +16,6 @@ use num_bigint::BigInt;
 use std::{cell::RefCell, cmp::Ordering};
 
 pub use conversion::ToNumber;
-pub use format::Formatting;
 
 /// Arbitrary-precision numeric system supporting integers, decimals, and binary-aware arithmetic.
 #[derive(Clone)]

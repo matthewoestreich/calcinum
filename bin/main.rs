@@ -1,7 +1,6 @@
 #[macro_use]
 mod macros;
 mod context;
-mod formatting;
 
 use context::Context;
 use rustyline::DefaultEditor;
@@ -10,9 +9,6 @@ use std::{
     io::{Write, stdout},
     process,
 };
-use varienum::VariantsVec;
-
-use crate::formatting::Kind;
 
 const EXPECTED_ARGS_LEN: usize = 1;
 
@@ -156,17 +152,17 @@ fn print_available_constants() {
 }
 
 fn print_formatting_info() {
-    let kinds_str = Kind::variants_desc()
-        .iter()
-        .fold(String::new(), |acc, (_, desc)| {
-            if desc.is_empty() {
-                acc
-            } else {
-                let d = format_green!("{desc}");
-                let f = format!("{acc} | {d}");
-                if acc.is_empty() { d } else { f }
-            }
-        });
+    let mut kinds = calcinum::cli_format_kinds();
+    kinds.sort();
+    let kinds_str = kinds.iter().fold(String::new(), |acc, (_, desc)| {
+        if desc.is_empty() {
+            acc
+        } else {
+            let d = format_green!("{desc}");
+            let f = format!("{acc} | {d}");
+            if acc.is_empty() { d } else { f }
+        }
+    });
 
     println!("  Available formatting kinds:");
     println!("   {kinds_str}");

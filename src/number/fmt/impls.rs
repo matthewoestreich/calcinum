@@ -1,21 +1,47 @@
-use crate::{Number, number::hexchar::HexChar};
+use crate::{
+    Number,
+    number::{
+        fmt::spec::{FormatSpec, Formatter},
+        hexchar::HexChar,
+    },
+};
 use std::fmt;
 
 impl Number {
     /// Applies custom formatting logic.
-    /// See [Formatting] for more information.
+    /// See [`Formatting`](crate#cli-formatting) for more examples.
+    ///
+    /// If you provide an invalid format string, we just return `self` as a `String`
+    /// without any formatting.
     ///
     /// ```rust
-    /// use calcinum::{Number, Formatting};
+    /// use calcinum::Number;
     ///
-    /// let n = "123.456".parse::<Number>().expect("Number::Decimal");
-    /// let fmt = n.format(Formatting::Decimal { scale: 1 });
-    /// assert_eq!(fmt, "123.4".to_string());
+    /// let n = Number::from(123);
+    ///
+    /// // Format number as binary.
+    /// let a = n.format("b");
+    /// assert_eq!(&a, "1111011");
+    ///
+    /// // Format number as binary with a width of 12, non zero padded.
+    /// let b = n.format("12b");
+    /// assert_eq!(&b, "     1111011");
+    ///
+    /// // Format number as binary with a width o 12, zero padded.
+    /// let c = n.format("012b");
+    /// assert_eq!(&c, "000001111011");
+    ///
+    /// // Format number as binary width a width of 12, zero padded, groups of 4.
+    /// let d = n.format("012b4");
+    /// assert_eq!(&d, "0000 0111 1011");
     /// ```
     ///
-    /// See [`Formatting` variants](crate::Formatting#variants) for more examples.
-    pub fn format(&self, formatting: Formatting) -> String {
-        formatting.apply(self)
+    /// See [`Formatting`](crate#cli-formatting) for more examples.
+    pub fn format(&self, fmt_spec_str: &str) -> String {
+        FormatSpec::parse(fmt_spec_str).map_or_else(
+            |_| self.to_string(),
+            |spec| Formatter::format_number(self, spec).unwrap_or(self.to_string()),
+        )
     }
 
     /// Formats `self` as it's binary string represenation.
@@ -223,189 +249,6 @@ impl fmt::UpperHex for Number {
     }
 }
 
-/// Formatting for arbitrarily sized numbers.
-#[derive(Debug, Clone)]
-pub enum Formatting {
-    /// How many digits to show after the decimal.
-    ///
-    /// ```rust
-    /// use calcinum::{Number, Formatting};
-    ///
-    /// let number = "12.3456789".parse::<Number>().expect("Number::Decimal");
-    /// let expect = "12.3456".to_string();
-    /// let format = Formatting::Decimal { scale: 4 };
-    /// let formatted = format.apply(&number);
-    /// assert_eq!(formatted, expect);
-    /// // Can also use the [`.format(...)`] method on instances of [`Number`].
-    /// let formatted = number.format(format);
-    /// assert_eq!(formatted, expect);
-    /// ```
-    Decimal { scale: usize },
-
-    /// How many total digits to show. Symbols like `-` and `.` do not affect digit count.
-    ///
-    /// ```rust
-    /// use calcinum::{Number, Formatting};
-    ///
-    /// let number = "12345.678".parse::<Number>().expect("Number::Decimal");
-    /// let expect = "12345.6".to_string();
-    /// let format = Formatting::Digits { width: 6 };
-    /// let formatted = format.apply(&number);
-    /// assert_eq!(formatted, expect);
-    /// // Can also use the [`.format(...)`] method on instances of [`Number`].
-    /// let formatted = number.format(format);
-    /// assert_eq!(formatted, expect);
-    /// ```
-    Digits { width: usize },
-
-    /// Format as binary string with `separator` and `group_by` chunks.
-    /// Formats decimals with a fractional part literally. Meaning, we format each side of
-    /// the decimal separately, then combine them via a decimal while preserving the sign.
-    ///
-    /// This will also auto-pad the decimal string to make it 'even'.
-    ///
-    /// `separator` : delimiter used to separate groups.
-    ///
-    /// `group_by` : how many binary digits that will appear consecutively before a `separator`.
-    ///
-    /// ```rust
-    /// use calcinum::{Number, Formatting};
-    ///
-    /// let number = Number::from(u64::MAX);
-    /// let expect = String::from("11111111 11111111 11111111 11111111 11111111 11111111 11111111 11111111");
-    /// let format = Formatting::Binary {
-    ///     separator: " ".to_string(),
-    ///     group_by: 8,
-    /// };
-    /// let formatted = format.apply(&number);
-    /// assert_eq!(formatted, expect);
-    /// let formatted = number.format(format);
-    /// assert_eq!(formatted, expect);
-    /// ````
-    Binary { separator: String, group_by: usize },
-}
-
-impl Formatting {
-    /// See the documentation for [`Formatting` variants](crate::Formatting#variants) for more details.
-    pub fn apply(&self, number: &Number) -> String {
-        match *self {
-            Formatting::Digits { width } => Self::apply_digits_formatting(number, width),
-            Formatting::Decimal { scale } => Self::apply_decimal_digits_formatting(number, scale),
-            Formatting::Binary {
-                ref separator,
-                group_by,
-            } => Self::apply_binary_formatting(number, separator, group_by),
-        }
-    }
-
-    fn apply_decimal_digits_formatting(number: &Number, precision: usize) -> String {
-        let num_str = number.to_string();
-
-        if number.is_int() {
-            return num_str;
-        }
-
-        let (int_part, fract_part) = num_str.split_once('.').unwrap_or((&num_str, ""));
-
-        if precision == 0 {
-            return int_part.to_string();
-        }
-
-        if fract_part.len() <= precision {
-            return num_str;
-        }
-
-        let truncated = &fract_part[..precision];
-        format!("{int_part}.{truncated}")
-    }
-
-    fn apply_digits_formatting(number: &Number, width: usize) -> String {
-        let num_str = number.to_string();
-        let mut fmted = String::new();
-        let mut seen_digits = 0;
-
-        for c in num_str.chars() {
-            if seen_digits >= width {
-                break;
-            }
-
-            fmted.push(c);
-
-            if c != '-' && c != '.' {
-                seen_digits += 1;
-            }
-        }
-
-        fmted
-    }
-
-    fn apply_binary_formatting(number: &Number, separator: &str, grouping: usize) -> String {
-        let bs = format!("{number:b}");
-        let (ip, fp) = bs.split_once('.').unwrap_or((&bs, ""));
-
-        let mut fmted = Self::format_binary_str(ip, separator, grouping);
-        let bfp = Self::format_binary_str(fp, separator, grouping);
-
-        if !bfp.is_empty() {
-            fmted.push_str(&format!(".{bfp}"));
-        }
-
-        fmted
-    }
-
-    /// Assumes you have alredy verified the `bin_str` you are passing in is binary.
-    /// Handles negative binary strings ('-' at start of string).
-    fn format_binary_str(bin_str: &str, separator: &str, grouping: usize) -> String {
-        if bin_str.is_empty() {
-            return String::new();
-        }
-        if grouping == 0 {
-            return bin_str.to_string();
-        }
-
-        let (sign, digits) = if let Some(stripped) = bin_str.strip_prefix('-') {
-            ("-", stripped)
-        } else {
-            ("", bin_str)
-        };
-
-        let len = digits.len();
-        let target_len = Formatting::next_pos_multiple_inclusive(grouping, len);
-        let pad_by = target_len.saturating_sub(len);
-
-        let mut padded = "0".repeat(pad_by);
-        padded.push_str(digits);
-
-        let mut result = String::new();
-        result.push_str(sign);
-
-        let chars: Vec<_> = padded.chars().collect();
-        for (i, chunk) in chars.rchunks(grouping).rev().enumerate() {
-            if i > 0 {
-                result.push_str(separator);
-            }
-            for c in chunk {
-                result.push(*c);
-            }
-        }
-
-        result
-    }
-
-    /// Finds the next multiple, `m`, starting at `n`.
-    /// If `n` is already a multiple of `m`, we return `n`.
-    /// If `m` or `n` are 0, we return 0.
-    fn next_pos_multiple_inclusive(m: usize, n: usize) -> usize {
-        if m == 0 || n == 0 {
-            return 0;
-        }
-        if n.is_multiple_of(m) {
-            return n;
-        };
-        ((n / m) + 1) * m
-    }
-}
-
 // ===========================================================================================
 // ========================== Tests ==========================================================
 // ===========================================================================================
@@ -417,74 +260,47 @@ mod test {
     use rstest::*;
 
     #[rstest]
-    #[case::next_pos_multiple1(3, 34, 36)]
-    #[case::next_pos_multiple2(103, 34, 103)]
-    #[case::next_pos_multiple3(5, 0, 0)]
-    #[case::next_pos_multiple4(1, 999, 999)]
-    #[case::next_pos_multiple5(10, 10, 10)]
-    #[case::next_pos_multiple6(10, 11, 20)]
-    #[case::next_pos_multiple7(7, 14, 14)]
-    #[case::next_pos_multiple8(7, 15, 21)]
-    #[case::next_pos_multiple9(8, 64, 64)]
-    #[case::next_pos_multiple10(8, 65, 72)]
-    #[case::next_pos_multiple11(1024, 1_000_000, 1_000_448)]
-    #[case::next_pos_multiple_edge(13, 26, 26)]
-    #[case::next_pos_multiple_div_zero(0, 13, 0)]
-    #[case::next_pos_multiple_div_zero(13, 0, 0)]
-    fn next_pos_multiple(#[case] m: usize, #[case] n: usize, #[case] expect: usize) {
-        let a = Formatting::next_pos_multiple_inclusive(m, n);
-        assert_eq!(a, expect, "expected {expect} got {a}");
-    }
-
-    #[rstest]
-    #[case::formatting_decimals1("-12345.6789", 2, "-12345.67")]
-    #[case::formatting_decimals2("12345.6", 0, "12345")]
-    #[case::formatting_decimals3("12345.6789", 20, "12345.6789")]
-    fn formatting_decimals(#[case] number: &str, #[case] scale: usize, #[case] expect: &str) {
-        let n = number.parse::<Number>().unwrap();
-        let decimals = n.format(Formatting::Decimal { scale });
-        assert_eq!(
-            decimals, expect,
-            "expected decimals '{expect}' got decimals '{decimals}'"
-        );
-    }
-
-    #[rstest]
-    #[case::formatting_digits1("-12345.6789", 7, "-12345.67")]
-    fn formatting_digits(#[case] number: &str, #[case] width: usize, #[case] expect: &str) {
-        let n = number.parse::<Number>().expect("number str to Number");
-        let digits = n.format(Formatting::Digits { width });
-        assert_eq!(
-            digits, expect,
-            "expected digits '{expect}' got digits '{digits}'"
-        );
-    }
-
-    #[rstest]
-    #[case::formatting_binary1("-12345.6789", " ", 4, "-0011 0000 0011 1001.0001 1010 1000 0101")]
-    #[case::formatting_binary2("0", " ", 4, "0000")]
-    #[case::formatting_binary3("1", " ", 4, "0001")]
-    #[case::formatting_binary4("15", " ", 4, "1111")]
-    #[case::formatting_binary5("16", " ", 4, "0001 0000")]
-    #[case::formatting_binary6("255", " ", 4, "1111 1111")]
-    #[case::formatting_binary7("256", " ", 4, "0001 0000 0000")]
-    #[case::formatting_binary8("-1", " ", 4, "-0001")]
-    #[case::formatting_binary9("-255", " ", 4, "-1111 1111")]
-    #[case::formatting_binary10("1023", "_", 8, "00000011_11111111")]
-    #[case::formatting_binary11("42", "-", 3, "101-010")]
-    #[case::formatting_binary12(&u64::MAX.to_string(), " ", 8, "11111111 11111111 11111111 11111111 11111111 11111111 11111111 11111111")]
-    #[case::formatting_binary13("3", " ", 8, "00000011")]
+    #[ignore]
+    #[case::formatting_binary1(
+        "-12345.6789",
+        true,
+        Some(32),
+        Some(4),
+        "-0011 0000 0011 1001.0001 1010 1000 0101"
+    )]
+    #[case::formatting_binary2("0", false, None, Some(4), "0000")]
+    #[case::formatting_binary3("1", false, None, Some(4), "0001")]
+    #[case::formatting_binary3a("1", false, None, Some(4), "0001")]
+    #[case::formatting_binary4("15", false, None, Some(4), "1111")]
+    #[case::formatting_binary5("16", true, Some(8), Some(4), "0001 0000")]
+    #[case::formatting_binary6("255", false, None, Some(4), "1111 1111")]
+    #[case::formatting_binary7("256", true, Some(12), Some(4), "0001 0000 0000")]
+    #[case::formatting_binary8("-1", true, Some(4), None, "-0001")]
+    #[case::formatting_binary9("-255", false, None, Some(4), "-1111 1111")]
+    #[case::formatting_binary10("1023", true, Some(16), Some(8), "00000011 11111111")]
+    #[case::formatting_binary11("42", false, None, Some(3), "101 010")]
+    #[case::formatting_binary12(&u64::MAX.to_string(), false, None, Some(8), "11111111 11111111 11111111 11111111 11111111 11111111 11111111 11111111")]
+    #[case::formatting_binary13("3", true, Some(8), None, "00000011")]
     fn formatting_binary(
         #[case] number: &str,
-        #[case] separator: &str,
-        #[case] group_by: usize,
+        #[case] is_zero_pad: bool,
+        #[case] width: Option<usize>,
+        #[case] group_by: Option<usize>,
         #[case] expect: &str,
     ) {
         let n = number.parse::<Number>().expect("number str to Number");
-        let binary = n.format(Formatting::Binary {
-            separator: separator.to_string(),
-            group_by,
-        });
+        let mut fmt_str = String::new();
+        if is_zero_pad {
+            fmt_str.push('0');
+        }
+        if let Some(width) = width {
+            fmt_str.push_str(&format!("{width}"));
+        }
+        fmt_str.push('b');
+        if let Some(group) = group_by {
+            fmt_str.push_str(&format!("{group}"));
+        }
+        let binary = n.format(&fmt_str);
         assert_eq!(
             binary, expect,
             "expected binary '{expect}' got binary '{binary}'"

@@ -1,5 +1,4 @@
-use crate::formatting::{FormatSpec, Formatter};
-use calcinum::{CalculatorError, Number};
+use calcinum::CalculatorError;
 use std::{iter, str::Chars};
 
 #[derive(Default, Debug)]
@@ -85,7 +84,8 @@ impl Context {
                     println_green!("{r}");
                 } else {
                     // Formatting was used.
-                    self.format_number_and_print(&r, specifier);
+                    let spec = specifier.trim_start_matches(':');
+                    println_green!("{}", r.format(spec));
                 }
             }
             Err(e) => {
@@ -138,15 +138,5 @@ impl Context {
 
     fn push_history(&mut self, expression: &str, result: Option<String>) {
         self.history.push((expression.to_string(), result));
-    }
-
-    fn format_number_and_print(&self, number: &Number, spec: &str) {
-        match FormatSpec::parse(spec) {
-            Ok(parsed_spec) => match Formatter::format_number(number, parsed_spec) {
-                Ok(formatted) => println_green!("{formatted}"),
-                Err(e) => println_yellow!("Invalid format specifier '{spec}' : {e:?}"),
-            },
-            Err(e) => println_yellow!("Invalid format specifier '{spec}' : {e:?}"),
-        }
     }
 }
