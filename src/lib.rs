@@ -139,12 +139,15 @@
 //!
 //! Kinds are case sensitive.
 //!
+//! **Note:** if `d` kind is specified everything else is ignored.
+//!
 //! | Kind | Description        |
 //! |------|--------------------|
 //! | `b`  | Binary             |
 //! | `x`  | Hex (lowercase)    |
 //! | `X`  | Hex (uppercase)    |
 //! | `B`  | Base64             |
+//! | `N`  | `Number`           |
 //!
 //! ## Examples
 //!
@@ -189,6 +192,8 @@ pub use calculator::*;
 pub use num_bigint;
 pub use number::{Formatting, Number, NumberOrder, ToNumber, error::NumberError};
 
+use varienum::VariantsVec;
+
 /// Evaluates expression.
 ///
 /// ```rust
@@ -206,27 +211,27 @@ pub fn eval(expression: &str) -> Result<Number, CalculatorError> {
 /// This method returns a vec of
 /// available functions for use within the CLI.
 #[doc(hidden)]
-pub fn cli_functions() -> Vec<String> {
-    let mut all = vec![];
-    all.extend(ast::Function::variants_debug());
+pub fn cli_functions() -> Vec<(&'static str, &'static str)> {
+    let mut all = Vec::<(&'static str, &'static str)>::new();
+    all.extend(ast::Function::variants_desc());
     all
 }
 
 /// This method returns a vec of
 /// available operators for use within the CLI.
 #[doc(hidden)]
-pub fn cli_operators() -> Vec<String> {
-    let mut all = vec![];
-    all.extend(ast::Unary::variants_debug());
-    all.extend(ast::Binary::variants_debug());
+pub fn cli_operators() -> Vec<(&'static str, &'static str)> {
+    let mut all = Vec::<(&'static str, &'static str)>::new();
+    all.extend(ast::Unary::variants_desc());
+    all.extend(ast::Binary::variants_desc());
     all
 }
 
 /// This method returns a vec of
 /// available constants for use within the CLI.
 #[doc(hidden)]
-pub fn cli_constants() -> Vec<String> {
-    let mut all = vec![];
-    all.extend(ast::Constant::variants_debug());
+pub fn cli_constants() -> Vec<(&'static str, &'static str)> {
+    let mut all = Vec::<(&'static str, &'static str)>::new();
+    all.extend(ast::Constant::variants_desc());
     all
 }

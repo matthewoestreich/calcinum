@@ -1,4 +1,5 @@
 use calcinum::Number;
+use varienum::VariantsVec;
 
 #[derive(Debug)]
 pub enum State {
@@ -9,12 +10,47 @@ pub enum State {
     Group,
 }
 
+#[derive(Debug, Default, PartialEq, Eq, VariantsVec)]
+pub enum Kind {
+    #[description = "b (binary)"]
+    Binary,
+    #[description = "X (hex upper)"]
+    HexadecimalUpper,
+    #[description = "x (hex lower"]
+    HexadecimalLower,
+    #[description = "B (base64)"]
+    Base64,
+    #[description = "N (Number)"]
+    Number,
+    #[default]
+    Null,
+}
+
+impl Kind {
+    pub fn is_null(&self) -> bool {
+        matches!(self, Kind::Null)
+    }
+}
+
+impl From<char> for Kind {
+    fn from(c: char) -> Self {
+        match c {
+            'b' => Self::Binary,
+            'X' => Self::HexadecimalUpper,
+            'x' => Self::HexadecimalLower,
+            'B' => Self::Base64,
+            'N' => Self::Number,
+            _ => Self::Null,
+        }
+    }
+}
+
 #[derive(Default, Debug)]
 pub struct FormatSpec {
     zero_pad: bool,
     width: Option<usize>,
     // the only part of the spec that is required.
-    kind: char,
+    kind: Kind,
     group: Option<usize>,
 }
 
@@ -23,7 +59,7 @@ impl FormatSpec {
         let mut zero_pad = false;
         let mut width = String::new();
         let mut group = String::new();
-        let mut kind = None;
+        let mut kind = Kind::Null;
 
         let mut state = State::Start;
 
@@ -39,7 +75,7 @@ impl FormatSpec {
                         state = State::Width;
                     }
                     c if c.is_ascii_alphabetic() => {
-                        kind = Some(c);
+                        kind = Kind::from(c);
                         state = State::Kind;
                     }
                     _ => return Err(format!("unexpected char '{c}' in Start")),
@@ -50,7 +86,7 @@ impl FormatSpec {
                         state = State::Width;
                     }
                     c if c.is_alphabetic() => {
-                        kind = Some(c);
+                        kind = Kind::from(c);
                         state = State::Kind;
                     }
                     _ => return Err(format!("unexpected char '{c}' after Start")),
@@ -61,7 +97,7 @@ impl FormatSpec {
                         state = State::Width;
                     }
                     c if c.is_ascii_alphabetic() => {
-                        kind = Some(c);
+                        kind = Kind::from(c);
                         state = State::Kind;
                     }
                     _ => return Err(format!("unexxpected char '{c}' in Width")),
@@ -80,7 +116,7 @@ impl FormatSpec {
             }
         }
 
-        let Some(kind) = kind else {
+        if kind.is_null() {
             return Err("kind is required!".to_string());
         };
 
@@ -109,10 +145,14 @@ pub struct Formatter;
 impl Formatter {
     pub fn format_number(number: &Number, spec: FormatSpec) -> Result<String, String> {
         let num_str = match spec.kind {
-            'b' => number.to_binary_str(),
-            c if c == 'x' || c == 'X' => number.to_hexadecimal_str(c == 'X'),
-            'B' => number.to_base64_str(),
-            _ => return Err(format!("unrecognized type '{}'", spec.kind)),
+            // `N` means someone used formatting on something that was already formatted.
+            // Like if they did `123 :b` to get binary then did `@@ :N`.
+            Kind::Number => return Ok(number.to_string().parse::<Number>()?.to_string()),
+            Kind::Binary => number.to_binary_str(),
+            Kind::HexadecimalLower => number.to_hexadecimal_str(false),
+            Kind::HexadecimalUpper => number.to_hexadecimal_str(true),
+            Kind::Base64 => number.to_base64_str(),
+            Kind::Null => return Err(format!("unrecognized type '{:?}'", spec.kind)),
         };
 
         let mut group_pad = 0;
@@ -174,25 +214,33 @@ impl Formatter {
 mod test {
     use super::*;
     use rstest::*;
+    use std::mem;
 
     #[rstest]
-    #[case::fmt_spec1("8b4", false, Some(8), 'b', Some(4))]
-    #[case::fmt_spec2("0x4", true, None, 'x', Some(4))]
-    #[case::fmt_spec3("16x2", false, Some(16), 'x', Some(2))]
-    #[case::fmt_spec4("b", false, None, 'b', None)]
-    #[case::fmt_spec5("08b4", true, Some(8), 'b', Some(4))]
-    #[case::fmt_spec6("0b", true, None, 'b', None)]
+    #[case::fmt_spec1("8b4", false, Some(8), Kind::Binary, Some(4))]
+    #[case::fmt_spec2("0x4", true, None, Kind::HexadecimalLower, Some(4))]
+    #[case::fmt_spec3("16x2", false, Some(16), Kind::HexadecimalLower, Some(2))]
+    #[case::fmt_spec4("b", false, None, Kind::Binary, None)]
+    #[case::fmt_spec5("08b4", true, Some(8), Kind::Binary, Some(4))]
+    #[case::fmt_spec6("0b", true, None, Kind::Binary, None)]
+    #[should_panic]
+    #[case::fmt_spec7("z", true, None, Kind::Null, None)]
     fn format_spec(
         #[case] spec_str: &str,
         #[case] expected_zero_pad: bool,
         #[case] expected_width: Option<usize>,
-        #[case] expected_kind: char,
+        #[case] expected_kind: Kind,
         #[case] expected_group: Option<usize>,
     ) {
         let parsed = FormatSpec::parse(spec_str).unwrap();
         assert_eq!(parsed.zero_pad, expected_zero_pad);
         assert_eq!(parsed.width, expected_width);
-        assert_eq!(parsed.kind, expected_kind);
         assert_eq!(parsed.group, expected_group);
+        assert_eq!(
+            mem::discriminant(&parsed.kind),
+            mem::discriminant(&expected_kind),
+            "expected kind '{expected_kind:?}' got kind '{:?}'",
+            parsed.kind
+        );
     }
 }

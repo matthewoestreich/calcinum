@@ -1,6 +1,6 @@
 use crate::ast::Token;
 use std::fmt;
-use varienum::variants_vec;
+use varienum::VariantsVec;
 
 #[derive(Debug, Clone)]
 pub enum Associativity {
@@ -76,11 +76,12 @@ impl fmt::Display for Operator {
 /// Operators with unary arity.
 ///
 
-#[variants_vec]
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, VariantsVec)]
 pub enum Unary {
-    Negate, // -
-    Not,    // !
+    #[description = "-"]
+    Negate,
+    #[description = "!"]
+    Not,
 }
 
 impl fmt::Display for Unary {
@@ -108,20 +109,30 @@ impl fmt::Debug for Unary {
 /// Operators with binary arity.
 ///
 
-#[variants_vec]
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, VariantsVec)]
 pub enum Binary {
-    Add,            // +
-    Subtract,       // -
-    Multiply,       // *
-    Divide,         // /
-    Exponentiation, // **
-    Remainder,      // %
-    And,            // &
-    Or,             // |
-    Xor,            // ^
-    ShiftLeft,      // <<
-    ShiftRight,     // >>
+    #[description = "+"]
+    Add,
+    #[description = "-"]
+    Subtract,
+    #[description = "*"]
+    Multiply,
+    #[description = "/"]
+    Divide,
+    #[description = "**"]
+    Exponentiation,
+    #[description = "%"]
+    Remainder,
+    #[description = "&"]
+    And,
+    #[description = "|"]
+    Or,
+    #[description = "^"]
+    Xor,
+    #[description = "<<"]
+    ShiftLeft,
+    #[description = ">>"]
+    ShiftRight,
 }
 
 impl fmt::Display for Binary {

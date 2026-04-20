@@ -1,6 +1,6 @@
 use crate::ast::error::ParserError;
 use std::{fmt, str::FromStr};
-use varienum::variants_vec;
+use varienum::VariantsVec;
 
 ///
 /// -- Important info --
@@ -10,20 +10,31 @@ use varienum::variants_vec;
 ///           Rounding mode is half even; round to ‘nearest neighbor’, if equidistant, round towards nearest even digit.
 ///
 
-#[variants_vec]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, VariantsVec)]
 pub enum Function {
+    #[description = "abs"]
     Abs,
+    #[description = "floor"]
     Floor,
+    #[description = "ceil"]
     Ceil,
+    #[description = "sin"]
     Sin,
+    #[description = "cos"]
     Cos,
+    #[description = "tan"]
     Tan,
+    #[description = "round"]
     Round,
+    #[description = "sinh"]
     Sinh,
+    #[description = "cosh"]
     Cosh,
+    #[description = "tanh"]
     Tanh,
+    #[description = "rad"]
     Rad,
+    #[description = "sqrt"]
     Sqrt,
 }
 

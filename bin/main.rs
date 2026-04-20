@@ -10,6 +10,9 @@ use std::{
     io::{Write, stdout},
     process,
 };
+use varienum::VariantsVec;
+
+use crate::formatting::Kind;
 
 const EXPECTED_ARGS_LEN: usize = 1;
 
@@ -55,14 +58,14 @@ fn repl_mode() {
     //
     let mut commands = vec![
         ("clear", "clears the screen"),
-        ("commands", "prints this message"),
-        ("consts", "prints available constants"),
+        ("consts", "available constants"),
         ("exit", "exits the repl"),
-        ("funcs", "prints available functions"),
+        ("funcs", "available functions"),
         ("help", "prints this message"),
-        ("history", "prints available history"),
-        ("ops", "prints available operators"),
+        ("history", "available history"),
+        ("ops", "available operators"),
         ("reset", "resets history"),
+        ("fmt", "formatting help"),
     ];
 
     commands.sort_by_key(|e| e.0);
@@ -92,6 +95,7 @@ fn repl_mode() {
                     "funcs" | "functions" => print_available_functions(),
                     "consts" | "constants" => print_available_constants(),
                     "ops" | "operators" => print_available_operators(),
+                    "fmt" | "format" | "formatting" | "formats" => print_formatting_info(),
                     "exit" => break,
                     // this needs to be last!
                     s => ctx.parse_and_eval(s),
@@ -119,8 +123,8 @@ fn global_reset(
 fn print_available_functions() {
     let mut cli_fns = calcinum::cli_functions();
     cli_fns.sort();
-    let str = cli_fns.iter().fold(String::new(), |acc, fc| {
-        let g = format_green!("{}", fc.to_lowercase());
+    let str = cli_fns.iter().fold(String::new(), |acc, (_, description)| {
+        let g = format_green!("{description}");
         let f = format!("{acc}, {g}");
         if acc.is_empty() { g } else { f }
     });
@@ -130,8 +134,8 @@ fn print_available_functions() {
 fn print_available_operators() {
     let mut cli_ops = calcinum::cli_operators();
     cli_ops.sort();
-    let str = cli_ops.iter().fold(String::new(), |acc, op| {
-        let g = format_green!("{}", op.to_lowercase());
+    let str = cli_ops.iter().fold(String::new(), |acc, (_, description)| {
+        let g = format_green!("{description}");
         let f = format!("{acc}, {g}");
         if acc.is_empty() { g } else { f }
     });
@@ -141,12 +145,34 @@ fn print_available_operators() {
 fn print_available_constants() {
     let mut cli_consts = calcinum::cli_constants();
     cli_consts.sort();
-    let str = cli_consts.iter().fold(String::new(), |acc, cn| {
-        let g = format_green!("{}", cn.to_lowercase());
-        let f = format!("{acc}, {g}");
-        if acc.is_empty() { g } else { f }
-    });
+    let str = cli_consts
+        .iter()
+        .fold(String::new(), |acc, (_, description)| {
+            let g = format_green!("{description}");
+            let f = format!("{acc}, {g}");
+            if acc.is_empty() { g } else { f }
+        });
     println!("  {str}");
+}
+
+fn print_formatting_info() {
+    let kinds_str = Kind::variants_desc()
+        .iter()
+        .fold(String::new(), |acc, (_, desc)| {
+            if desc.is_empty() {
+                acc
+            } else {
+                let d = format_green!("{desc}");
+                let f = format!("{acc} | {d}");
+                if acc.is_empty() { d } else { f }
+            }
+        });
+
+    println!("  Available formatting kinds:");
+    println!("   {kinds_str}");
+    println!(
+        "  For detailed syntax guide : https://docs.rs/calcinum/latest/calcinum/#cli-formatting"
+    );
 }
 
 /// Each tuple is : ("command_name", "command_description")

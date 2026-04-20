@@ -1,11 +1,14 @@
+#![allow(clippy::upper_case_acronyms)]
+
 use crate::ast::error::ParserError;
 use std::{fmt, str::FromStr};
-use varienum::variants_vec;
+use varienum::VariantsVec;
 
-#[variants_vec]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, VariantsVec)]
 pub enum Constant {
+    #[description = "pi"]
     PI,
+    #[description = "e"]
     EULER,
 }
 

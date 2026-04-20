@@ -602,9 +602,23 @@ checksum = "06abde3611657adf66d383f00b093d7faecc7fa57071cce2578660c9f1010821"
 
 [[package]]
 name = "varienum"
+version = "0.2.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "41fa9a3deffd0037a3e35f2c3b8d4e8b8488b21676dfced6f60143572d615313"
+dependencies = [
+ "varienum-macro",
+]
+
+[[package]]
+name = "varienum-macro"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "760fc861a4a0f3f6318874fcfec1b106047183d659f3862272bdf5727998e722"
+checksum = "d7a53d8efa606c35efc726e8e6ce335fa021cebc23c4b04aacbd34d2e9dd9033"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.117",
+]
 
 [[package]]
 name = "wasi"

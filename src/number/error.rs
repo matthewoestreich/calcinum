@@ -6,6 +6,7 @@ use std::{error, fmt};
 /// Error type for [`Number`](crate::Number).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum NumberError {
+    Message(String),
     Parsing { value: String },
     InvalidExponent { message: String },
     DivisionByZero,
@@ -18,6 +19,7 @@ pub enum NumberError {
 impl fmt::Display for NumberError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            NumberError::Message(text) => write!(f, "{text}"),
             NumberError::IsNaNOrInfinity => {
                 write!(f, "cannot represent NaN or Infinity as a Number")
             }
@@ -55,6 +57,12 @@ impl From<AstroError> for NumberError {
             AstroError::InvalidArgument => Self::InvalidArgument,
             AstroError::MemoryAllocation => Self::MemoryAllocation,
         }
+    }
+}
+
+impl From<NumberError> for String {
+    fn from(number_error: NumberError) -> Self {
+        number_error.to_string()
     }
 }
 
