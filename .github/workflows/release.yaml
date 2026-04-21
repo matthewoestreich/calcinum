@@ -34,11 +34,14 @@ jobs:
         with:
           targets: ${{ matrix.target }}
 
+      # ----------------------------
+      # Build
+      # ----------------------------
       - name: Build release binary
         run: cargo build --release --target ${{ matrix.target }}
 
       # ----------------------------
-      # Strip (smaller binaries)
+      # Strip (unix only)
       # ----------------------------
       - name: Strip binary (unix)
         if: runner.os != 'Windows'
@@ -46,21 +49,32 @@ jobs:
           strip target/${{ matrix.target }}/release/* || true
 
       # ----------------------------
-      # Prepare dist folder
+      # Extract binary name safely
+      # ----------------------------
+      - name: Get binary name
+        id: bin
+        shell: bash
+        run: |
+          echo "name=$(cargo metadata --format-version=1 --no-deps | jq -r '.packages[0].name')" >> $GITHUB_OUTPUT
+
+      # ----------------------------
+      # Prepare artifact
       # ----------------------------
       - name: Prepare artifact
         shell: bash
         run: |
           mkdir -p dist
 
+          BIN_NAME=${{ steps.bin.outputs.name }}
+
           if [ "${{ runner.os }}" = "Windows" ]; then
-            cp target/${{ matrix.target }}/release/*.exe dist/cli-${{ matrix.bin_suffix }}.exe
+            cp target/${{ matrix.target }}/release/${BIN_NAME}.exe dist/cli-${{ matrix.bin_suffix }}.exe
           else
-            cp target/${{ matrix.target }}/release/* dist/cli-${{ matrix.bin_suffix }}
+            cp target/${{ matrix.target }}/release/${BIN_NAME} dist/cli-${{ matrix.bin_suffix }}
           fi
 
       # ----------------------------
-      # Compress artifacts
+      # Archive artifacts
       # ----------------------------
       - name: Archive (tar.gz)
         if: runner.os != 'Windows'
