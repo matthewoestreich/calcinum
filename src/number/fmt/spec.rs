@@ -1,43 +1,6 @@
-//! # Formatting
-//!
-//! - We use the same spec as the cli, without the need to start with `:`.
-//! - You need to provide a string to the `.format("..")`method using the following
-//!   grammar and syntax as described in the docs found at the top of `src/lib.rs` or
-//!   here [Formatting Help](https://docs.rs/calcinum/latest/calcinum/index.html#cli-formatting).
-//!
-//! # Spec
-//!
-//! At a high level:
-//!
-//! ```text
-//! 0999b8
-//! | | ||
-//! | | |+--   (8) GROUPING : Provide a number and we will group your output by `N` characters.
-//! | | +---   (b) KIND : This is the format you want, e.g., binary, hex, base64, etc ...
-//! | +----- (999) WIDTH : How many characters do you want your output to be.
-//! +-------   (0) ZERO PAD : Do you want us to pad width with 0's? If not provided we pad with spaces.
-//! ```
-//!
-//! # Examples
-//!
-//! ```rust
-//! use calcinum::Number;
-//!
-//! let n = Number::from(123);
-//!
-//! // Format number as binary.
-//! n.format("b"); // "1111011"
-//!
-//! // Format number as binary with a width of 12, non zero padded.
-//! n.format("12b"); // "     1111011"
-//!
-//! // Format number as binary with a width o 12, zero padded.
-//! n.format("012b"); // "000001111011"
-//!
-//! // Format number as binary width a width of 12, zero padded, groups of 4.
-//! n.format("012b4"); // "0000 0111 1011"
-//! ```
-//!
+//
+// See [here](https://docs.rs/calcinum/latest/calcinum/index.html#library-usage) for more info.
+//
 
 use crate::Number;
 use std::fmt;
