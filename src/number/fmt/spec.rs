@@ -246,80 +246,101 @@ impl Formatter {
     }
 
     fn fmt_binary(num_str: &str, spec: &FormatSpec) -> String {
-        let (is_neg, s) = match num_str.strip_prefix('-') {
-            Some(rest) => (true, rest),
-            None => (false, num_str),
+        let (sign, s) = match num_str.strip_prefix('-') {
+            Some(rest) => ("-", rest),
+            None => ("", num_str),
         };
 
         let width = spec.width.unwrap_or(0);
         let group = spec.group.unwrap_or(0);
         let pad_char = if spec.zero_pad { "0" } else { " " };
-
         let (lhs, rhs) = s.split_once('.').unwrap_or((s, ""));
 
         let mut lhs_out = String::new();
         let mut rhs_out = String::new();
 
-        if width > lhs.len() + rhs.len() {
-            if rhs.is_empty() {
-                lhs_out.push_str(&pad_char.repeat(width - lhs.len()));
-                lhs_out.push_str(lhs);
-            } else {
-                let w = if width.is_multiple_of(2) {
-                    width
-                } else {
-                    width - 1
-                };
+        let total_len = lhs.len() + rhs.len();
+        let target_width = width.max(total_len);
+        let mut pad = target_width.saturating_sub(total_len);
 
-                let half = w / 2;
-                lhs_out.push_str(&pad_char.repeat(half.saturating_sub(lhs.len())));
-                rhs_out.push_str(&pad_char.repeat(half.saturating_sub(rhs.len())));
-
-                if w < width {
-                    lhs_out.push_str(pad_char);
-                }
-
-                lhs_out.push_str(lhs);
-                rhs_out.push_str(rhs);
-            }
-        } else {
-            lhs_out.push_str(lhs);
-            rhs_out.push_str(rhs);
-        }
+        // input=1111011.1111011 w=32 g=4
+        // -> 0000 0000 0000 0000 0111 11011 . 0111 11011
 
         if group > 0 {
+            // Find how many chars rhs will be -
+            // we need to sub that amount from pad.
+            let rhs_fmtd_len = Self::next_multiple(group, rhs.len());
+            let lhs_fmtd_len = Self::next_multiple(group, lhs.len());
+            let total_fmt_len = lhs_fmtd_len + rhs_fmtd_len; // 16
+            pad = target_width.saturating_sub(total_fmt_len);
+            let expected_output_len = pad + lhs.len() + rhs_fmtd_len;
+            println!("expected_output_len= '{expected_output_len}'");
+            let extra_pad = target_width.saturating_sub(expected_output_len);
+            pad += extra_pad;
+            println!(
+                "\ntarget_width= '{target_width}'\nlhs_fmtd_len= '{lhs_fmtd_len}'\nrhs_fmtd_len= '{rhs_fmtd_len}'\ntotal_len= '{total_len}'\npad= '{pad}'\ntotal_fmt_len= '{total_fmt_len}'\n"
+            );
+        }
+
+        lhs_out.push_str(&pad_char.repeat(pad));
+        /*
+        if width > total_len {
             if rhs.is_empty() {
-                lhs_out = Self::group_by(&lhs_out, group);
+                lhs_out.push_str(&pad_char.repeat(width - lhs.len()));
             } else {
+                let half = width / 2;
+                println!(
+                    "lhs.len= '{}' | rhs.len= '{}' | width= '{width}' | half_width= '{half}' | groupby= '{group}'",
+                    lhs.len(),
+                    rhs.len()
+                );
+                lhs_out.push_str(&pad_char.repeat(half.saturating_sub(lhs.len())));
+                rhs_out.push_str(&pad_char.repeat(half.saturating_sub(rhs.len())));
+            }
+        }
+        */
+
+        lhs_out.push_str(lhs);
+        rhs_out.push_str(rhs);
+
+        if group > 0 {
+            println!(
+                "lhs -> group_by -> s.len (lhs_out.len) = '{}' | n (group)= '{group}'",
+                lhs_out.len()
+            );
+            lhs_out = Self::group_by(&lhs_out, group);
+            if !rhs.is_empty() {
                 rhs_out = Self::group_by(&rhs_out, group);
-                lhs_out = Self::group_by(&lhs_out, group);
             }
         }
 
-        let mut output = lhs_out;
+        let mut output = format!("{sign}{lhs_out}");
         if !rhs.is_empty() {
             output.push_str(&format!(".{rhs_out}"));
-        }
-        if is_neg {
-            output = format!("-{output}");
         }
 
         output
     }
 
     fn group_by(s: &str, n: usize) -> String {
-        let pad_by = Self::next_multiple(n, s.len()) - s.len();
-        let mut temp = String::new();
-        temp.push_str(&"0".repeat(pad_by));
-        temp.push_str(s);
-        let mut o = String::new();
-        for (i, c) in temp.chars().enumerate() {
+        println!("  [group_by] s.len= '{}' | n= '{n}'", s.len());
+        let total = Self::next_multiple(n, s.len());
+        let pad = total - s.len();
+        let sbytes = s.as_bytes();
+        let mut output = String::new();
+
+        for i in 0..total {
             if i != 0 && i % n == 0 {
-                o.push(' ');
+                output.push(' ');
             }
-            o.push(c);
+            if i < pad {
+                output.push('0');
+            } else {
+                output.push(sbytes[i - pad] as char);
+            }
         }
-        o
+
+        output
     }
 
     /// Finds the next multiple, `m`,  starting at `n`.
