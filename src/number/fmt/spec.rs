@@ -105,6 +105,7 @@ impl fmt::Display for Kind {
 pub struct FormatSpec {
     zero_pad: bool,
     width: Option<usize>,
+    #[allow(dead_code)]
     scale: Option<usize>,
     // the only part of the spec that is required.
     kind: Kind,
@@ -122,63 +123,66 @@ impl FormatSpec {
 
         for c in spec.chars() {
             match state {
-                State::Start => match c {
-                    '0' => {
+                State::Start => {
+                    if c == '0' {
                         zero_pad = true;
                         state = State::ZeroPad;
-                    }
-                    c if c.is_ascii_digit() => {
+                    } else if c.is_ascii_digit() {
                         width.push(c);
                         state = State::Width;
-                    }
-                    c if c.is_ascii_alphabetic() => {
+                    } else if c.is_ascii_alphabetic() {
                         kind = Kind::from(c);
                         state = State::Kind;
+                    } else {
+                        return Err(format!("unexpected char '{c}' in Start"));
                     }
-                    _ => return Err(format!("unexpected char '{c}' in Start")),
-                },
-                State::ZeroPad => match c {
-                    c if c.is_ascii_digit() => {
+                }
+                State::ZeroPad => {
+                    if c.is_ascii_digit() {
                         width.push(c);
                         state = State::Width;
-                    }
-                    c if c.is_alphabetic() => {
+                    } else if c.is_alphabetic() {
                         kind = Kind::from(c);
                         state = State::Kind;
+                    } else {
+                        return Err(format!("unexpected char '{c}' after Start"));
                     }
-                    _ => return Err(format!("unexpected char '{c}' after Start")),
-                },
-                State::Width => match c {
-                    '.' => {
+                }
+                State::Width => {
+                    if c == '.' {
                         state = State::Scale;
-                    }
-                    c if c.is_ascii_digit() => {
+                    } else if c.is_ascii_digit() {
                         width.push(c);
                         state = State::Width;
-                    }
-                    c if c.is_ascii_alphabetic() => {
+                    } else if c.is_ascii_alphabetic() {
                         kind = Kind::from(c);
                         state = State::Kind;
+                    } else {
+                        return Err(format!("unexxpected char '{c}' in Width"));
                     }
-                    _ => return Err(format!("unexxpected char '{c}' in Width")),
-                },
-                State::Kind => match c {
-                    c if c.is_ascii_digit() => {
+                }
+                State::Kind => {
+                    if c.is_ascii_digit() {
                         group.push(c);
                         state = State::Group;
+                    } else {
+                        return Err(format!("unexpected char '{c}' in Kind"));
                     }
-                    _ => return Err(format!("unexpected char '{c}' in Kind")),
-                },
-                State::Scale => match c {
-                    c if c.is_ascii_digit() => {
+                }
+                State::Scale => {
+                    if c.is_ascii_digit() {
                         scale.push(c);
+                    } else {
+                        return Err(format!("unexpect char '{c}' in Scale"));
                     }
-                    _ => return Err(format!("unexpect char '{c}' in Scale")),
-                },
-                State::Group => match c {
-                    c if c.is_ascii_digit() => group.push(c),
-                    _ => return Err(format!("unexpected char '{c}' in Group")),
-                },
+                }
+                State::Group => {
+                    if c.is_ascii_digit() {
+                        group.push(c);
+                    } else {
+                        return Err(format!("unexpected char '{c}' in Group"));
+                    }
+                }
             }
         }
 
@@ -227,95 +231,95 @@ pub struct Formatter;
 
 impl Formatter {
     pub fn format_number(number: &Number, spec: FormatSpec) -> Result<String, String> {
-        let num_str = match spec.kind {
-            Kind::Number => number.to_string(),
-            Kind::Binary => number.to_binary_str(),
-            Kind::HexadecimalLower => number.to_hexadecimal_str(false),
-            Kind::HexadecimalUpper => number.to_hexadecimal_str(true),
-            Kind::Base64 => number.to_base64_str(),
-            Kind::Null => return Err(format!("unrecognized type '{:?}'", spec.kind)),
-        };
+        match spec.kind {
+            Kind::Number => Ok(number.to_string().parse::<Number>()?.to_string()),
+            Kind::Binary => Ok(Self::fmt_binary(&number.to_binary_str(), &spec)),
+            Kind::HexadecimalLower => Ok(Self::fmt_hex(&number.to_hexadecimal_str(false), &spec)),
+            Kind::HexadecimalUpper => Ok(Self::fmt_hex(&number.to_hexadecimal_str(true), &spec)),
+            Kind::Base64 => Ok(number.to_base64_str()),
+            Kind::Null => Err(format!("unrecognized type '{:?}'", spec.kind)),
+        }
+    }
 
-        let (is_negative, num_str) = match num_str.strip_prefix('-') {
-            Some(rest) => (true, rest.to_string()),
+    fn fmt_hex(hex_str: &str, spec: &FormatSpec) -> String {
+        Self::fmt_binary(hex_str, spec)
+    }
+
+    fn fmt_binary(num_str: &str, spec: &FormatSpec) -> String {
+        let (is_neg, s) = match num_str.strip_prefix('-') {
+            Some(rest) => (true, rest),
             None => (false, num_str),
         };
 
-        println!("spec.Kind == {}", spec.kind);
+        let width = spec.width.unwrap_or(0);
+        let group = spec.group.unwrap_or(0);
+        let pad_char = if spec.zero_pad { "0" } else { " " };
 
-        if spec.kind == Kind::Number {
-            println!("spec.kind is N and we are in 'if' statement.");
-            if !number.is_decimal() {
-                return Ok(num_str);
-            }
-            let Some(scale) = spec.scale else {
-                return Ok(num_str);
-            };
-            let (int_part, fract_part) = num_str.split_once('.').unwrap_or((&num_str, ""));
-            let fmted_fract_part: String = fract_part.chars().take(scale).collect();
-            println!("scale='{scale}' | int_part='{int_part}' | fractt_part='{fract_part}'");
-            return Ok(format!("{int_part}.{fmted_fract_part}"));
-        }
+        let (lhs, rhs) = s.split_once('.').unwrap_or((s, ""));
 
-        let pad_char = if spec.zero_pad { '0' } else { ' ' };
+        let mut lhs_out = String::new();
+        let mut rhs_out = String::new();
 
-        let mut group_pad = 0;
-        let mut width_pad = 0;
+        if width > lhs.len() + rhs.len() {
+            if rhs.is_empty() {
+                lhs_out.push_str(&pad_char.repeat(width - lhs.len()));
+                lhs_out.push_str(lhs);
+            } else {
+                let w = if width.is_multiple_of(2) {
+                    width
+                } else {
+                    width - 1
+                };
 
-        if let Some(w) = spec.width {
-            width_pad = w.saturating_sub(num_str.len());
-        }
-        if let Some(group) = spec.group {
-            let min_len = num_str.len() + width_pad;
-            group_pad = Self::next_multiple(group, min_len) - min_len;
-        }
+                let half = w / 2;
+                lhs_out.push_str(&pad_char.repeat(half.saturating_sub(lhs.len())));
+                rhs_out.push_str(&pad_char.repeat(half.saturating_sub(rhs.len())));
 
-        let cap = width_pad + group_pad + num_str.len() + if is_negative { 1 } else { 0 };
-        let mut num_fmtd = String::with_capacity(cap);
-
-        // Base64 already encoded the negative symbol.
-        // Only add negative sign to start of string if we are padding with zeros,
-        // otherwise the final result looks like `"-     0101010101"`
-        if is_negative && pad_char == '0' && spec.kind != Kind::Base64 {
-            num_fmtd.push('-');
-        }
-
-        for _ in 0..width_pad {
-            num_fmtd.push(pad_char);
-        }
-        for _ in 0..group_pad {
-            num_fmtd.push('0');
-        }
-
-        // Base64 already encoded the negative symbol.
-        // Only add negative sign after padding if padding char == ' ',
-        // otherwise the final result looks like `"-     0101010101"`
-        if is_negative && pad_char == ' ' && spec.kind != Kind::Base64 {
-            num_fmtd.push('-');
-        }
-
-        // Now we have padding in our 'formatted' string,
-        // push our converted Number string into it.
-        num_fmtd.push_str(&num_str);
-
-        if let Some(group) = spec.group {
-            let mut s = String::with_capacity(num_fmtd.len());
-            let mut i = 0;
-            for c in num_fmtd.chars() {
-                if c == '-' {
-                    s.push(c);
-                    continue;
+                if w < width {
+                    lhs_out.push_str(pad_char);
                 }
-                if i != 0 && i % group == 0 {
-                    s.push(' ');
-                }
-                s.push(c);
-                i += 1;
+
+                lhs_out.push_str(lhs);
+                rhs_out.push_str(rhs);
             }
-            num_fmtd = s;
+        } else {
+            lhs_out.push_str(lhs);
+            rhs_out.push_str(rhs);
         }
 
-        Ok(num_fmtd)
+        if group > 0 {
+            if rhs.is_empty() {
+                lhs_out = Self::group_by(&lhs_out, group);
+            } else {
+                rhs_out = Self::group_by(&rhs_out, group);
+                lhs_out = Self::group_by(&lhs_out, group);
+            }
+        }
+
+        let mut output = lhs_out;
+        if !rhs.is_empty() {
+            output.push_str(&format!(".{rhs_out}"));
+        }
+        if is_neg {
+            output = format!("-{output}");
+        }
+
+        output
+    }
+
+    fn group_by(s: &str, n: usize) -> String {
+        let pad_by = Self::next_multiple(n, s.len()) - s.len();
+        let mut temp = String::new();
+        temp.push_str(&"0".repeat(pad_by));
+        temp.push_str(s);
+        let mut o = String::new();
+        for (i, c) in temp.chars().enumerate() {
+            if i != 0 && i % n == 0 {
+                o.push(' ');
+            }
+            o.push(c);
+        }
+        o
     }
 
     /// Finds the next multiple, `m`,  starting at `n`.
