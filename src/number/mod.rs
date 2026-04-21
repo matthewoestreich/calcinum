@@ -1,5 +1,6 @@
 pub mod error;
-pub mod fmt;
+pub mod format;
+pub mod predicate;
 
 #[macro_use]
 mod macros;
@@ -7,7 +8,7 @@ mod arithmetic;
 mod bitwise;
 mod comparison;
 mod conversion;
-mod hexchar;
+mod digit;
 mod numeric;
 
 use astro_float::Consts;
@@ -15,13 +16,16 @@ use bigdecimal::BigDecimal;
 use num_bigint::BigInt;
 use std::{cell::RefCell, cmp::Ordering};
 
-pub use conversion::ToNumber;
-
 /// Arbitrary-precision numeric system supporting integers, decimals, and binary-aware arithmetic.
 #[derive(Clone)]
 pub enum Number {
     Int(BigInt),
     Decimal(BigDecimal),
+}
+
+/// Implementors know how to become a `Number`.
+pub trait ToNumber {
+    fn to_number(&self) -> Number;
 }
 
 thread_local! {

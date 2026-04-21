@@ -236,7 +236,6 @@ pub use calculator::*;
 pub use num_bigint;
 pub use number::{Number, NumberOrder, ToNumber, error::NumberError};
 
-use number::fmt as numfmt;
 use varienum::VariantsVec;
 
 /// Evaluates expression.
@@ -286,6 +285,6 @@ pub fn cli_constants() -> Vec<(&'static str, &'static str)> {
 #[doc(hidden)]
 pub fn cli_format_kinds() -> Vec<(&'static str, &'static str)> {
     let mut all = Vec::<(&'static str, &'static str)>::new();
-    all.extend(numfmt::Kind::variants_desc());
+    all.extend(number::format::Kind::variants_desc());
     all
 }

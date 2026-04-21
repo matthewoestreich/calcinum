@@ -3,7 +3,7 @@ use std::{fmt, str::FromStr};
 
 #[repr(u8)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum HexChar {
+pub enum HexDigit {
     D0 = 0,
     D1 = 1,
     D2 = 2,
@@ -22,7 +22,7 @@ pub enum HexChar {
     F = 15,
 }
 
-impl HexChar {
+impl HexDigit {
     pub fn to_char(self, uppercase: bool) -> char {
         let value = self as u8;
 
@@ -48,27 +48,27 @@ impl HexChar {
     }
 }
 
-impl TryFrom<u8> for HexChar {
+impl TryFrom<u8> for HexDigit {
     type Error = NumberError;
 
     fn try_from(value: u8) -> Result<Self, Self::Error> {
         Ok(match value {
-            0 => HexChar::D0,
-            1 => HexChar::D1,
-            2 => HexChar::D2,
-            3 => HexChar::D3,
-            4 => HexChar::D4,
-            5 => HexChar::D5,
-            6 => HexChar::D6,
-            7 => HexChar::D7,
-            8 => HexChar::D8,
-            9 => HexChar::D9,
-            10 => HexChar::A,
-            11 => HexChar::B,
-            12 => HexChar::C,
-            13 => HexChar::D,
-            14 => HexChar::E,
-            15 => HexChar::F,
+            0 => HexDigit::D0,
+            1 => HexDigit::D1,
+            2 => HexDigit::D2,
+            3 => HexDigit::D3,
+            4 => HexDigit::D4,
+            5 => HexDigit::D5,
+            6 => HexDigit::D6,
+            7 => HexDigit::D7,
+            8 => HexDigit::D8,
+            9 => HexDigit::D9,
+            10 => HexDigit::A,
+            11 => HexDigit::B,
+            12 => HexDigit::C,
+            13 => HexDigit::D,
+            14 => HexDigit::E,
+            15 => HexDigit::F,
             _ => {
                 return Err(NumberError::Parsing {
                     value: format!("'{value}' out of hex range"),
@@ -78,7 +78,7 @@ impl TryFrom<u8> for HexChar {
     }
 }
 
-impl TryFrom<char> for HexChar {
+impl TryFrom<char> for HexDigit {
     type Error = NumberError;
 
     fn try_from(c: char) -> Result<Self, Self::Error> {
@@ -93,11 +93,11 @@ impl TryFrom<char> for HexChar {
             }
         };
 
-        Ok(HexChar::try_from(value).expect("already verified in range"))
+        Ok(HexDigit::try_from(value).expect("already verified in range"))
     }
 }
 
-impl TryFrom<&char> for HexChar {
+impl TryFrom<&char> for HexDigit {
     type Error = NumberError;
 
     fn try_from(c: &char) -> Result<Self, Self::Error> {
@@ -105,27 +105,27 @@ impl TryFrom<&char> for HexChar {
     }
 }
 
-impl FromStr for HexChar {
+impl FromStr for HexDigit {
     type Err = NumberError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let hc = match s {
-            "0" => HexChar::D0,
-            "1" => HexChar::D1,
-            "2" => HexChar::D2,
-            "3" => HexChar::D3,
-            "4" => HexChar::D4,
-            "5" => HexChar::D5,
-            "6" => HexChar::D6,
-            "7" => HexChar::D7,
-            "8" => HexChar::D8,
-            "9" => HexChar::D9,
-            "10" => HexChar::A,
-            "11" => HexChar::B,
-            "12" => HexChar::C,
-            "13" => HexChar::D,
-            "14" => HexChar::E,
-            "15" => HexChar::F,
+            "0" => HexDigit::D0,
+            "1" => HexDigit::D1,
+            "2" => HexDigit::D2,
+            "3" => HexDigit::D3,
+            "4" => HexDigit::D4,
+            "5" => HexDigit::D5,
+            "6" => HexDigit::D6,
+            "7" => HexDigit::D7,
+            "8" => HexDigit::D8,
+            "9" => HexDigit::D9,
+            "10" => HexDigit::A,
+            "11" => HexDigit::B,
+            "12" => HexDigit::C,
+            "13" => HexDigit::D,
+            "14" => HexDigit::E,
+            "15" => HexDigit::F,
             _ => {
                 return Err(NumberError::Parsing {
                     value: format!("invalid hex character : '{s}'"),
@@ -136,7 +136,7 @@ impl FromStr for HexChar {
     }
 }
 
-impl fmt::Display for HexChar {
+impl fmt::Display for HexDigit {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let value = *self as u8;
 
