@@ -1,0 +1,83 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build (${{ matrix.os }} / ${{ matrix.target }})
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            bin_suffix: linux
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            bin_suffix: macos
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            bin_suffix: windows
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Build release binary
+        run: cargo build --release --target ${{ matrix.target }}
+
+      # ----------------------------
+      # Strip (smaller binaries)
+      # ----------------------------
+      - name: Strip binary (unix)
+        if: runner.os != 'Windows'
+        run: |
+          strip target/${{ matrix.target }}/release/* || true
+
+      # ----------------------------
+      # Prepare dist folder
+      # ----------------------------
+      - name: Prepare artifact
+        shell: bash
+        run: |
+          mkdir -p dist
+
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            cp target/${{ matrix.target }}/release/*.exe dist/cli-${{ matrix.bin_suffix }}.exe
+          else
+            cp target/${{ matrix.target }}/release/* dist/cli-${{ matrix.bin_suffix }}
+          fi
+
+      # ----------------------------
+      # Compress artifacts
+      # ----------------------------
+      - name: Archive (tar.gz)
+        if: runner.os != 'Windows'
+        run: |
+          cd dist
+          tar -czf cli-${{ matrix.bin_suffix }}.tar.gz *
+
+      - name: Archive (zip)
+        if: runner.os == 'Windows'
+        run: |
+          cd dist
+          powershell Compress-Archive * cli-${{ matrix.bin_suffix }}.zip
+
+      # ----------------------------
+      # Upload release assets
+      # ----------------------------
+      - name: Upload Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
