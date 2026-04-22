@@ -363,7 +363,7 @@ pub(crate) fn decimal_str_to_octal_str(decimal_str: &str) -> Result<String, Numb
             // Already checked front
             '-' => return Err(NumberError::InvalidArgument),
             '.' if !seen_decimal => seen_decimal = true,
-            '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' => {
+            c if c.is_ascii_digit() => {
                 if !seen_decimal {
                     int_part.push(c);
                 } else {

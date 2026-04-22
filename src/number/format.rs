@@ -592,6 +592,7 @@ mod test {
     #[rstest]
     #[case::octal1("123.123", "173.173")]
     #[case::octal2("-123.123", "-173.173")]
+    #[case::octal3("123456789", "726746425")]
     fn to_octal(#[case] number: &str, #[case] expect: &str) {
         let n = number.parse::<Number>().expect("Number");
         let r = n.to_octal_str();
