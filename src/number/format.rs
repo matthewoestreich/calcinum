@@ -143,6 +143,8 @@ pub enum Kind {
     HexadecimalUpper,
     #[description = "x (hex lower"]
     HexadecimalLower,
+    #[description = "o (octal"]
+    Octal,
     #[description = "B (base64)"]
     Base64,
     #[description = "N (Number)"]
@@ -163,6 +165,7 @@ impl From<char> for Kind {
             'b' => Self::Binary,
             'X' => Self::HexadecimalUpper,
             'x' => Self::HexadecimalLower,
+            'o' => Self::Octal,
             'B' => Self::Base64,
             'N' => Self::Number,
             _ => Self::Null,
@@ -174,6 +177,7 @@ impl fmt::Display for Kind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Kind::Binary => write!(f, "b"),
+            Kind::Octal => write!(f, "o"),
             Kind::HexadecimalUpper => write!(f, "X"),
             Kind::HexadecimalLower => write!(f, "x"),
             Kind::Base64 => write!(f, "B"),
@@ -318,6 +322,7 @@ impl Formatter {
             Kind::Binary => Self::fmt_radix(&number.to_binary_str(), &spec),
             Kind::HexadecimalLower => Self::fmt_radix(&number.to_hexadecimal_str(false), &spec),
             Kind::HexadecimalUpper => Self::fmt_radix(&number.to_hexadecimal_str(true), &spec),
+            Kind::Octal => Self::fmt_radix(&number.to_octal_str(), &spec),
             Kind::Base64 => number.to_base64_str(),
             Kind::Null => return Err(format!("unrecognized type '{:?}'", spec.kind)),
         })

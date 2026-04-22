@@ -68,7 +68,7 @@
 //! Order of operations.
 //!
 //! | Operator | Operation      | Precedence  | Arity  | Associativity |
-//! | -------- | -------------- | ----------- | ------ | ------------- |
+//! | :------: | -------------- | ----------- | ------ | ------------- |
 //! | `-`      | Negation       | 8 (highest) | Unary  | Right         |
 //! | `!`      | Bitwise NOT    | 8           | Unary  | Right         |
 //! | `**`     | Exponentiation | 7           | Binary | Right         |
@@ -90,7 +90,7 @@
 //! `abs(1 + ceil(100 / 33) - (12 + 13)) / 2`
 //!
 //! | Function | Description |
-//! |----------|-------------|
+//! |:--------:|-------------|
 //! | `abs`    | Absolute value |
 //! | `floor`  | Round down |
 //! | `ceil`   | Round up |
@@ -107,7 +107,7 @@
 //! # Constants
 //!
 //! | Name | Description | Value |
-//! |------|-------------|-------|
+//! |:----:|-------------|-------|
 //! | `pi` | π constant  | `3.1415926535897932383` |
 //! | `e`  | Euler’s number | `2.7182818284590452352` |
 //!
@@ -162,7 +162,7 @@
 //! ```
 //!
 //! | Component   | Required | Description                                      |
-//! |-------------|----------|--------------------------------------------------|
+//! |:-----------:|----------|--------------------------------------------------|
 //! | `0`         | No       | Enable zero-padding (only applies if width set)  |
 //! | `width`     | No       | Minimum total digit width (excludes `-` and `.`) |
 //! | `kind`      | Yes      | Output format (`b`, `x`, etc.)                   |
@@ -175,10 +175,11 @@
 //! **Note:** if `N` kind is specified everything else is ignored.
 //!
 //! | Kind | Description        |
-//! |------|--------------------|
+//! |:----:|--------------------|
 //! | `b`  | Binary             |
 //! | `x`  | Hex (lowercase)    |
 //! | `X`  | Hex (uppercase)    |
+//! | `o`  | Octal              |
 //! | `B`  | Base64             |
 //! | `N`  | `Number`           |
 //!
