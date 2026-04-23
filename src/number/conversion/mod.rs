@@ -7,64 +7,6 @@ use crate::{Number, ToNumber};
 use bigdecimal::BigDecimal;
 use num_bigint::BigInt;
 
-impl Number {
-    /// Encodes a string into base64 encoded string.
-    /// ```rust,ignore
-    /// use calcinum::Number;
-    /// let encoded = Number::base64_encode("abcd");
-    /// assert_eq!(encoded, "YWJjZA==");
-    /// ```
-    pub(crate) fn base64_encode(s: &str) -> String {
-        let alpha = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-        let mut encoded = String::new();
-        let mut buf = 0;
-        let mut bits = 0;
-
-        for byte in s.as_bytes() {
-            buf = (buf << 8) | *byte as u32;
-            bits += 8;
-            while bits >= 6 {
-                bits -= 6;
-                let i = (buf >> bits) & 0b111111;
-                encoded.push(alpha[i as usize] as char);
-            }
-        }
-
-        if bits > 0 {
-            let i = (buf << (6 - bits)) & 0b111111;
-            encoded.push(alpha[i as usize] as char);
-        }
-
-        // Padding
-        while !encoded.len().is_multiple_of(4) {
-            encoded.push('=');
-        }
-
-        encoded
-    }
-
-    /// Decode a base64 string to it's original form.
-    pub(crate) fn base64_decode(s: &str) -> String {
-        let s = s.trim_end_matches('=');
-        let alpha = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-        let mut decoded = String::new();
-        let mut buf = 0;
-        let mut bits = 0;
-
-        for byte in s.as_bytes() {
-            let value = alpha.iter().position(|c| c == byte).unwrap_or(0);
-            buf = (buf << 6) | value as u32;
-            bits += 6;
-            if bits >= 8 {
-                bits -= 8;
-                decoded.push(((buf >> bits) as u8) as char);
-            }
-        }
-
-        decoded
-    }
-}
-
 impl_to_number!(u8);
 impl_to_number!(u16);
 impl_to_number!(u32);
@@ -101,6 +43,7 @@ impl ToNumber for BigDecimal {
 #[cfg(test)]
 mod test {
     use crate::number::ToNumber;
+    use crate::number::conversion;
     use crate::*;
     use rstest::*;
     use std::str::FromStr as _;
@@ -198,12 +141,12 @@ mod test {
     #[case::b64encode("4352439852433149", "NDM1MjQzOTg1MjQzMzE0OQ==")]
     #[case::b64encode("-000000000.0000000000", "LTAwMDAwMDAwMC4wMDAwMDAwMDAw")]
     fn base64_encode_decode(#[case] s: &str, #[case] expect: &str) {
-        let encoded = Number::base64_encode(s);
+        let encoded = conversion::base64_encode(s);
         assert_eq!(
             encoded, expect,
             "expected encoded '{expect}' got encoded '{encoded}'"
         );
-        let decoded = Number::base64_decode(&encoded);
+        let decoded = conversion::from::base64_decode(&encoded);
         assert_eq!(
             decoded,
             s.to_string(),

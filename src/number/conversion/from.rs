@@ -222,7 +222,7 @@ impl Number {
             return Err(NumberError::InvalidArgument);
         }
         let s = s.strip_prefix("b64").unwrap_or(s);
-        let d = Self::base64_decode(s);
+        let d = base64_decode(s);
         d.parse::<Number>()
     }
 
@@ -263,6 +263,27 @@ impl Number {
 
         Ok(if is_negative { -number } else { number })
     }
+}
+
+/// Decode a base64 string to it's original form.
+pub(crate) fn base64_decode(s: &str) -> String {
+    let s = s.trim_end_matches('=');
+    let alpha = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    let mut decoded = String::new();
+    let mut buf = 0;
+    let mut bits = 0;
+
+    for byte in s.as_bytes() {
+        let value = alpha.iter().position(|c| c == byte).unwrap_or(0);
+        buf = (buf << 6) | value as u32;
+        bits += 6;
+        if bits >= 8 {
+            bits -= 8;
+            decoded.push(((buf >> bits) as u8) as char);
+        }
+    }
+
+    decoded
 }
 
 impl_number_from!(u8);

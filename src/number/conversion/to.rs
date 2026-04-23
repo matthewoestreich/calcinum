@@ -56,7 +56,7 @@ impl Number {
     /// assert_eq!(a.to_base64_str(), "LTIzNDUuMTIzNQ==".to_string());
     /// ```
     pub fn to_base64_str(&self) -> String {
-        Self::base64_encode(&self.to_string())
+        base64_encode(&self.to_string())
     }
 
     /// Formats `self` as an octal string.
@@ -181,6 +181,41 @@ impl ToPrimitive for Number {
             Number::Decimal(d) => d.to_u64(),
         }
     }
+}
+
+/// Encodes a string into base64 encoded string.
+/// ```rust,ignore
+/// use calcinum::Number;
+/// let encoded = Number::base64_encode("abcd");
+/// assert_eq!(encoded, "YWJjZA==");
+/// ```
+pub(crate) fn base64_encode(s: &str) -> String {
+    let alpha = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    let mut encoded = String::new();
+    let mut buf = 0;
+    let mut bits = 0;
+
+    for byte in s.as_bytes() {
+        buf = (buf << 8) | *byte as u32;
+        bits += 8;
+        while bits >= 6 {
+            bits -= 6;
+            let i = (buf >> bits) & 0b111111;
+            encoded.push(alpha[i as usize] as char);
+        }
+    }
+
+    if bits > 0 {
+        let i = (buf << (6 - bits)) & 0b111111;
+        encoded.push(alpha[i as usize] as char);
+    }
+
+    // Padding
+    while !encoded.len().is_multiple_of(4) {
+        encoded.push('=');
+    }
+
+    encoded
 }
 
 /// Converts a decimal string to a binary string
