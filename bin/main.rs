@@ -171,11 +171,8 @@ fn print_formatting_info() {
 
 /// Each tuple is : ("command_name", "command_description")
 fn print_commands(commands: &Vec<(&str, &str)>) {
-    let min_spaces = 4;
-    let longest_name = commands.iter().fold(0, |acc, (name, _)| {
-        let len = name.len();
-        if acc >= len { acc } else { len }
-    });
+    let min_spaces = 3;
+    let longest_name = commands.iter().fold(0, |a, n| a.max(n.0.len()));
     let dbl_at = format_cyan!("@@");
     let at_num = format_cyan!("@n");
     let n = format_cyan!("n");
