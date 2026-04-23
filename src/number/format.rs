@@ -141,9 +141,9 @@ pub enum Kind {
     Binary,
     #[description = "X (hex upper)"]
     HexadecimalUpper,
-    #[description = "x (hex lower"]
+    #[description = "x (hex lower)"]
     HexadecimalLower,
-    #[description = "o (octal"]
+    #[description = "o (octal)"]
     Octal,
     #[description = "B (base64)"]
     Base64,
