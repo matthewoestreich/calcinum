@@ -374,13 +374,9 @@ impl Num for Number {
     /// 8  (octal)   => '0o'
     /// 64 (base64)  => 'b64'
     fn from_str_radix(str: &str, radix: u32) -> Result<Self, Self::FromStrRadixErr> {
-        match radix {
-            2 => Number::from_binary_str(str),
-            6 => Number::from_hexadecimal_str(str),
-            8 => Number::from_octal_str(str),
-            10 => str.parse::<Number>(),
-            64 => Number::from_base64_str(str),
-            _ => Err(NumberError::UnsupportedRadix(radix)),
+        match str.parse::<Number>() {
+            Ok(n) => Ok(n),
+            Err(_) => Err(NumberError::UnsupportedRadix(radix)),
         }
     }
 }
