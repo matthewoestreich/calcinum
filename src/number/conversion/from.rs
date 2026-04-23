@@ -130,6 +130,68 @@ impl Number {
         Ok(if is_signed { -int } else { int })
     }
 
+    /// Octal strings must start with `0o` or `-0o` for negative octal numbers.
+    /// Outside of '-' or '.', octal strings can only contain digits "0" - "7".
+    ///
+    /// ```rust
+    /// use calcinum::Number;
+    ///
+    /// let os = "-0o173.173";
+    /// let num = Number::from_octal_str(os).expect("octal to Number");
+    /// let expect = "-123.123".parse::<Number>().expect("Number");
+    /// assert_eq!(num, expect);
+    /// ```
+    pub fn from_octal_str(octal_str: &str) -> Result<Number, NumberError> {
+        if !predicate::is_octal_str(octal_str) {
+            return Err(NumberError::Parsing {
+                value: format!("string '{octal_str}' is not an octal string"),
+            });
+        }
+
+        let (is_signed, s) = match octal_str.strip_prefix('-') {
+            Some(rest) => (true, rest),
+            None => (false, octal_str),
+        };
+
+        let s = s.strip_prefix("0o").unwrap_or(octal_str);
+        let (int_part, fract_part) = s.split_once('.').unwrap_or((s, ""));
+        let int_part_len = int_part.len();
+        let fract_part_len = fract_part.len();
+        let base = Number::from(8);
+
+        let mut int = int_part.chars().enumerate().try_fold(
+            Number::ZERO,
+            |acc, (i, c)| -> Result<_, NumberError> {
+                let exponent = int_part_len as u32 - 1 - i as u32;
+                let multiplier = base.pow(exponent as i64)?;
+                let digit = c.to_string().parse::<Number>()?;
+                Ok(acc + digit * multiplier)
+            },
+        )?;
+
+        let maybe_fract = if fract_part_len == 0 {
+            None
+        } else {
+            fract_part
+                .chars()
+                .enumerate()
+                .try_fold(Number::ZERO, |acc, (i, c)| -> Option<Number> {
+                    let exponent = fract_part_len as u32 - 1 - i as u32;
+                    let multiplier = base.pow(exponent as i64).ok()?;
+                    let digit = c.to_string().parse::<Number>().ok()?;
+                    Some(acc + digit * multiplier)
+                })
+        };
+
+        if let Some(fract) = maybe_fract {
+            // shift fract into decimal position, e.g., `int + fract / 10.pow(fract_digit_count)`
+            let scale = Number::from(10).pow(fract.digit_count() as i64)?;
+            int += fract / scale;
+        }
+
+        Ok(if is_signed { -int } else { int })
+    }
+
     /// Base64 strings must be prefixed with `b64`!
     /// ```rust
     /// use calcinum::Number;
@@ -252,6 +314,9 @@ impl FromStr for Number {
             return Ok(n);
         }
         if let Ok(n) = Number::from_hexadecimal_str(s) {
+            return Ok(n);
+        }
+        if let Ok(n) = Number::from_octal_str(s) {
             return Ok(n);
         }
         if let Ok(n) = Number::from_base64_str(s) {

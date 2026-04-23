@@ -161,6 +161,30 @@ pub(crate) fn is_hexadecimal_str(s: &str) -> bool {
     true
 }
 
+/// Octal string must start with `0o` or `-0o` for negative octal strings.
+/// A valid octal string on contains characters "0" - "7".
+pub(crate) fn is_octal_str(s: &str) -> bool {
+    if (!s.starts_with("-0o") && !s.starts_with("0o")) || s.is_empty() {
+        return false;
+    }
+
+    let s = s.strip_prefix('-').unwrap_or(s);
+    let s = s.strip_prefix("0o").unwrap_or(s);
+    let mut seen_decimal = false;
+
+    for c in s.chars() {
+        match c {
+            // Already checked front.
+            '-' => return false,
+            '.' if !seen_decimal => seen_decimal = true,
+            '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' => {}
+            _ => return false,
+        }
+    }
+
+    true
+}
+
 /// Checks to see if a string is considered a decimal.
 /// An empty decimal string returns `false`.
 /// We expect a decimal string to contain only:

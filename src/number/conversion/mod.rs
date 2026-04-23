@@ -168,6 +168,15 @@ mod test {
     }
 
     #[rstest]
+    #[case::from_octal_str("0o726746425", "123456789")]
+    #[case::from_octal_str("-0o173.173", "-123.123")]
+    fn from_octal_str(#[case] number: &str, #[case] expect: &str) {
+        let x = Number::from_octal_str(number).expect("octal to number");
+        let e = expect.parse::<Number>().expect("control to parse");
+        assert_eq!(x, e, "expected '{e:?}' got '{x:?}'");
+    }
+
+    #[rstest]
     #[case::bin_str_to_number1("0b1010", "10")]
     #[case::bin_str_to_number2("-0b1010", "-10")]
     #[case::bin_str_to_number3("0b00000000000001110001110101110101.1000011011", "466293.539")]
