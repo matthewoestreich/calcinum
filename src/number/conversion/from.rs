@@ -45,26 +45,23 @@ impl Number {
         Self::Decimal(bd)
     }
 
-    /// Performs hexadecimal validation to ensure we were given a hexadecimal string.
-    /// Converts said hexadecimal string into `Number`.
+    /// Converts hexadecimal string into `Number`.
     ///
     /// <div class="warning">
     ///
     /// # A valid hexadecimal string
     ///
     /// ```text
-    ///   -0xFFA.FFA
-    ///   | | | |
-    ///   | | | +-- A single decimal anywhere after `0x` (or `-0x`) prefix
-    ///   | | +---- Any amount of valid hexadecimal characters (see below)
-    ///   | +------ `0x` (or `-0x` for negative numbers) is required as prefix
+    ///   -FFA.FFA
+    ///   |  |  |
+    ///   |  |  +-- A single decimal anywhere after `0x` (or `-0x`) prefix
+    ///   |  +----- Any amount of valid hexadecimal characters (see below)
     ///   +-------- A single negative sign; only allowed as first char
     /// ```
     ///
     /// </div>
     ///
     /// # Valid hexadecimal characters
-    /// - Must start with `0x` or `-0x` for negative numbers
     /// - Any combination of:
     ///   - digits `0`-`9`
     ///   - characters (case **in**sensitive) `A`, `B`, `C`, `D`, `E`, `F`
@@ -73,12 +70,20 @@ impl Number {
     /// ```rust
     /// use calcinum::Number;
     ///
-    /// let a = "-0x63A.2675".parse::<Number>().expect("Number::Decimal");
+    /// let a = Number::from_hexadecimal_str("-63A.2675").expect("Number::Decimal");
     /// assert_eq!(a, "-1594.9845".parse::<Number>().expect("eq"));
     /// ```
     ///
     pub fn from_hexadecimal_str(hex_str: &str) -> Result<Number, NumberError> {
-        if !predicate::is_hexadecimal_str(hex_str) {
+        Self::from_hexadecimal_str_with_prefix(hex_str, false)
+    }
+
+    /// See comments on [`from_hexadecimal_str`]
+    pub(crate) fn from_hexadecimal_str_with_prefix(
+        hex_str: &str,
+        validate_prefix: bool,
+    ) -> Result<Number, NumberError> {
+        if !predicate::is_hexadecimal_str(hex_str, validate_prefix) {
             return Err(NumberError::Parsing {
                 value: format!("'{hex_str}' is not a hexadecimal string"),
             });
@@ -89,7 +94,12 @@ impl Number {
             None => (false, hex_str),
         };
 
-        let s = s.strip_prefix("0x").unwrap_or(hex_str);
+        let s = if validate_prefix {
+            s.strip_prefix("0x").unwrap_or(s)
+        } else {
+            s
+        };
+
         let (int_part, fract_part) = s.split_once('.').unwrap_or((s, ""));
         let int_part_len = int_part.len();
         let fract_part_len = fract_part.len();
@@ -130,19 +140,17 @@ impl Number {
         Ok(if is_signed { -int } else { int })
     }
 
-    /// Octal strings must start with `0o` or `-0o` for negative octal numbers.
-    /// Outside of '-' or '.', octal strings can only contain digits "0" - "7".
+    /// Converts an octal string into a [`Number`].
     ///
     /// <div class="warning">
     ///
     /// # A valid octal string
     ///
     /// ```text
-    ///   -0o173.173
-    ///   | | | |
-    ///   | | | +-- A single decimal anywhere after `0o` (or `-0o`) prefix
-    ///   | | +---- Any amount of valid octal characters (see below)
-    ///   | +------ `0o` (or `-0o` for negative numbers) is required as prefix
+    ///   -173.173
+    ///   | | |
+    ///   | | +---- A single decimal anywhere after `0o` (or `-0o`) prefix
+    ///   | +------ Any amount of valid octal characters (see below)
     ///   +-------- A single negative sign; only allowed as first char
     /// ```
     ///
@@ -154,13 +162,21 @@ impl Number {
     /// ```rust
     /// use calcinum::Number;
     ///
-    /// let os = "-0o173.173";
+    /// let os = "-173.173";
     /// let num = Number::from_octal_str(os).expect("octal to Number");
     /// let expect = "-123.123".parse::<Number>().expect("Number");
     /// assert_eq!(num, expect);
     /// ```
     pub fn from_octal_str(octal_str: &str) -> Result<Number, NumberError> {
-        if !predicate::is_octal_str(octal_str) {
+        Self::from_octal_str_with_prefix(octal_str, false)
+    }
+
+    /// See comments on [`from_octal_str`](crate::Number#method.from_octal_str)
+    pub(crate) fn from_octal_str_with_prefix(
+        octal_str: &str,
+        validate_prefix: bool,
+    ) -> Result<Number, NumberError> {
+        if !predicate::is_octal_str(octal_str, validate_prefix) {
             return Err(NumberError::Parsing {
                 value: format!("string '{octal_str}' is not an octal string"),
             });
@@ -171,7 +187,12 @@ impl Number {
             None => (false, octal_str),
         };
 
-        let s = s.strip_prefix("0o").unwrap_or(octal_str);
+        let s = if validate_prefix {
+            s.strip_prefix("0o").unwrap_or(s)
+        } else {
+            s
+        };
+
         let (int_part, fract_part) = s.split_once('.').unwrap_or((s, ""));
         let int_part_len = int_part.len();
         let fract_part_len = fract_part.len();
@@ -210,25 +231,47 @@ impl Number {
         Ok(if is_signed { -int } else { int })
     }
 
-    /// Base64 strings must be prefixed with `b64`!
+    /// Converts a base64 string into [`Number`].
+    ///
     /// ```rust
     /// use calcinum::Number;
     ///
-    /// let a = Number::from_base64_str("b64OTk5OTk=").expect("Number::Int");
+    /// let a = Number::from_base64_str("OTk5OTk=").expect("Number::Int");
     /// assert_eq!(a, Number::from(99999));
     /// ```
     pub fn from_base64_str(s: &str) -> Result<Number, NumberError> {
-        if s == "b64" || !s.starts_with("b64") {
+        Self::from_base64_str_with_prefix(s, false)
+    }
+
+    /// See comments on [`from_base64_str`]
+    pub(crate) fn from_base64_str_with_prefix(
+        s: &str,
+        validate_prefix: bool,
+    ) -> Result<Number, NumberError> {
+        if validate_prefix && (s == "b64" || !s.starts_with("b64")) {
             return Err(NumberError::InvalidArgument);
         }
-        let s = s.strip_prefix("b64").unwrap_or(s);
+
+        let s = if validate_prefix {
+            s.strip_prefix("b64").unwrap_or(s)
+        } else {
+            s
+        };
+
         let d = base64_decode(s);
         d.parse::<Number>()
     }
 
-    /// Performs binary string validation to ensure we were given a binary string,
-    /// then converts the binary string into `Number`.
-    pub(crate) fn from_binary_str(s: &str) -> Result<Self, NumberError> {
+    /// Converts the binary string into [`Number`].
+    pub fn from_binary_str(s: &str) -> Result<Self, NumberError> {
+        Self::from_binary_str_with_prefix(s, false)
+    }
+
+    /// See comments on [`from_base64_str`]
+    pub(crate) fn from_binary_str_with_prefix(
+        s: &str,
+        validate_prefix: bool,
+    ) -> Result<Number, NumberError> {
         let s = s.trim();
         // We were given "" or just the prefix to a binary string "0b" or "-0b"
         if s.is_empty() || s == "-0b" || s == "0b" || s == "-" {
@@ -236,7 +279,7 @@ impl Number {
                 value: format!("'{s}' either contains no binary or it is empty"),
             });
         }
-        if !predicate::is_binary_str(s) {
+        if !predicate::is_binary_str(s, validate_prefix) {
             return Err(NumberError::Parsing {
                 value: format!("'{s}' is not a binary string"),
             });
@@ -247,7 +290,11 @@ impl Number {
             None => (false, s),
         };
 
-        let s = s.strip_prefix("0b").unwrap_or(s);
+        let s = if validate_prefix {
+            s.strip_prefix("0b").unwrap_or(s)
+        } else {
+            s
+        };
 
         let number = if !s.contains('.') {
             Number::Int(BigInt::from_str_radix(s, 2)?)
@@ -347,23 +394,30 @@ impl TryFrom<f64> for Number {
 impl FromStr for Number {
     type Err = NumberError;
 
+    /// When using `from_str` each format, outside of a decimal string,
+    /// requires a specific prefix (see below).
+    ///
+    /// **If you do not want to worry about a prefix, please use [`Number::from_str_radix`]**.
+    ///
     /// The following radicies require a special prefix :
     ///
-    /// 2  (binary)  => `0b`
-    /// 6  (hex)     => '0x'
-    /// 8  (octal)   => '0o'
-    /// 64 (base64)  => 'b64'
+    /// | Radix | Format | Prefix |
+    /// | :---: | :----: | :----: |
+    /// | 2     | binary | `0b`   |
+    /// | 6     |  hex   | '0x'   |
+    /// | 8     | octal  | '0o'   |
+    /// | 64    | base64 | 'b64'  |
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if let Ok(n) = Number::from_binary_str(s) {
+        if let Ok(n) = Number::from_binary_str_with_prefix(s, true) {
             return Ok(n);
         }
-        if let Ok(n) = Number::from_hexadecimal_str(s) {
+        if let Ok(n) = Number::from_hexadecimal_str_with_prefix(s, true) {
             return Ok(n);
         }
-        if let Ok(n) = Number::from_octal_str(s) {
+        if let Ok(n) = Number::from_octal_str_with_prefix(s, true) {
             return Ok(n);
         }
-        if let Ok(n) = Number::from_base64_str(s) {
+        if let Ok(n) = Number::from_base64_str_with_prefix(s, true) {
             return Ok(n);
         }
         if let Ok(i) = s.parse::<BigInt>() {
@@ -385,5 +439,98 @@ impl FromPrimitive for Number {
 
     fn from_u64(n: u64) -> Option<Self> {
         Some(Number::from(n))
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use crate::*;
+    use rstest::*;
+    use std::str::FromStr as _;
+
+    #[rstest]
+    #[case::from_str1("2.2", "2.2")]
+    #[case::from_str2("1", "1")]
+    #[case::from_str3("0b00000000000001110001110101110101.1000011011", "466293.539")]
+    #[case::from_str4("-0b00000000000001110001110101110101.1000011011", "-466293.539")]
+    #[case::no_binary_prefix_dont_treat_as_binary("10101011001", "10101011001")]
+    #[case::from_str5("0b1010", "10")]
+    #[case::from_str6("0b1010.1010", "10.10")]
+    #[case::from_str7("-0b11110000010100011111", "-984351")]
+    #[should_panic]
+    #[case::from_str_panic("abcd", "")]
+    #[should_panic]
+    #[case::from_str_panic_contains_invalid_num_3("0b101010131001", "")]
+    #[should_panic]
+    #[case::from_str_panic_multiple_neg("-0b101010-131001", "")]
+    #[should_panic]
+    #[case::from_str_panic_multiple_decimals("0b1010.1013.1001", "")]
+    #[should_panic]
+    #[case::from_str_panic("   ", "")]
+    #[should_panic]
+    #[case::from_str_panic("0b", "")]
+    #[case::from_str_b64_1("b64LTIzNDUuMTIzNQ==", "-2345.1235")]
+    #[case::from_str_b64_2("b64NDM1NDMuMzIyOTM4NDAz", "43543.322938403")]
+    #[case::from_str_b64_3("b64NDM1MjQzOTg1MjQzMzE0OQ==", "4352439852433149")]
+    #[case::from_str_b64_4("b64LTAwMDAwMDAwMC4wMDAwMDAwMDAw", "-000000000.0000000000")]
+    ///
+    /// `from_str` REQUIRES FORMATS HAVE A SPECIFIC PREFIX!
+    ///
+    fn from_str(#[case] number: &str, #[case] expect: &str) {
+        let x = Number::from_str(number).expect("Number::from_str");
+        let e = expect.parse::<Number>().expect("to parse 'expect' param");
+        assert_eq!(x, e, "expected '{e:?}' got '{x:?}'");
+    }
+
+    #[rstest]
+    #[case::from_str_hex1("20FDE.3CBD04", "135134.3980548")]
+    #[case::from_str_hex2("-20FDE.3CBD04", "-135134.3980548")]
+    #[case::from_str_hex3("1", "1")]
+    #[case::from_str_hex4(
+        "d0d0c7c5742a63ee3d89fb998ca24c7a",
+        "277563472713248395635956171186146266234"
+    )]
+    fn from_hex_str(#[case] number: &str, #[case] expect: &str) {
+        let x = Number::from_hexadecimal_str(number).expect("hex to Number");
+        let e = expect.parse::<Number>().expect("control string to parse");
+        assert_eq!(x, e, "expected '{e:?}' got '{x:?}'");
+    }
+
+    #[rstest]
+    #[case::from_octal_str("726746425", "123456789")]
+    #[case::from_octal_str("-173.173", "-123.123")]
+    fn from_octal_str(#[case] number: &str, #[case] expect: &str) {
+        let x = Number::from_octal_str(number).expect("octal to number");
+        let e = expect.parse::<Number>().expect("control to parse");
+        assert_eq!(x, e, "expected '{e:?}' got '{x:?}'");
+    }
+
+    #[rstest]
+    #[case::from_b64_str_1("LTIzNDUuMTIzNQ==", "-2345.1235")]
+    #[case::from_b64_str_2("NDM1NDMuMzIyOTM4NDAz", "43543.322938403")]
+    #[case::from_b64_str_3("NDM1MjQzOTg1MjQzMzE0OQ==", "4352439852433149")]
+    #[case::from_b64_str_4("LTAwMDAwMDAwMC4wMDAwMDAwMDAw", "-000000000.0000000000")]
+    fn from_base64_str(#[case] number: &str, #[case] expect: &str) {
+        let x = Number::from_base64_str(number).expect("b64 to number");
+        let e = expect.parse::<Number>().expect("control to parse");
+        assert_eq!(x, e, "expected '{e:?}' got '{x:?}'");
+    }
+
+    #[rstest]
+    #[case::from_str3("00000000000001110001110101110101.1000011011", "466293.539")]
+    #[case::from_str4("-00000000000001110001110101110101.1000011011", "-466293.539")]
+    #[case::from_str5("1010", "10")]
+    #[case::from_str6("1010.1010", "10.10")]
+    #[case::from_str7("-11110000010100011111", "-984351")]
+    fn from_binary_str(#[case] number: &str, #[case] expect: &str) {
+        let x = Number::from_binary_str(number).expect("binary to number");
+        let e = expect.parse::<Number>().expect("control to parse");
+        assert_eq!(x, e, "expected '{e:?}' got '{x:?}'");
+    }
+
+    #[test]
+    fn from_f64() {
+        let a = Number::from_f64(1.1).unwrap();
+        assert_eq!(a.order(), NumberOrder::Decimal);
     }
 }

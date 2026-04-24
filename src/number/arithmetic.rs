@@ -367,16 +367,14 @@ impl Neg for &Number {
 impl Num for Number {
     type FromStrRadixErr = NumberError;
 
-    /// The following radicies require a special prefix :
-    ///
-    /// 2  (binary)  => `0b`
-    /// 6  (hex)     => '0x'
-    /// 8  (octal)   => '0o'
-    /// 64 (base64)  => 'b64'
     fn from_str_radix(str: &str, radix: u32) -> Result<Self, Self::FromStrRadixErr> {
-        match str.parse::<Number>() {
-            Ok(n) => Ok(n),
-            Err(_) => Err(NumberError::UnsupportedRadix(radix)),
+        match radix {
+            2 => Number::from_binary_str_with_prefix(str, false),
+            6 => Number::from_hexadecimal_str_with_prefix(str, false),
+            8 => Number::from_octal_str_with_prefix(str, false),
+            10 => str.parse::<Number>(),
+            64 => Number::from_base64_str_with_prefix(str, false),
+            _ => Err(NumberError::UnsupportedRadix(radix)),
         }
     }
 }

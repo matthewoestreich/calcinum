@@ -105,18 +105,27 @@ impl Number {
     }
 }
 
-/// We expect a binary string to start with `"0b"` or `"-0b"` for negative binary strings.
+/// If `validate_prefix` is true, we expect a binary string to start with
+/// `"0b"` or `"-0b"` for negative binary strings.
 /// A binary string can contain:
 /// - Digits `0` or `1`.
 /// - A single negative sign, e.g., `-`, required to be at the start of the string
 /// - A decimal, e.g., `.` to denote a fractional number in binary form.
-pub(crate) fn is_binary_str(s: &str) -> bool {
-    if !s.starts_with("0b") && !s.starts_with("-0b") || s.is_empty() {
+pub(crate) fn is_binary_str(s: &str, validate_prefix: bool) -> bool {
+    if s.is_empty() {
+        return false;
+    }
+    if validate_prefix && (!s.starts_with("0b") && !s.starts_with("-0b")) {
         return false;
     }
 
     let s = s.strip_prefix('-').unwrap_or(s);
-    let s = s.strip_prefix("0b").unwrap_or(s);
+    let s = if validate_prefix {
+        s.strip_prefix("0b").unwrap_or(s)
+    } else {
+        s
+    };
+
     let mut seen_decimal = false;
 
     for c in s.chars() {
@@ -132,20 +141,28 @@ pub(crate) fn is_binary_str(s: &str) -> bool {
     true
 }
 
-/// We expect a hexadecimal string to start with `"0x"`.
+/// If `validate_prefix` is true, we expect a hexadecimal string to start with `"0x"` or `"-0x"`.
 /// An empty string will return `false`.
 /// A hexadecimal string can contain (in any order):
 /// - Digits `0` - `9`.
 /// - Characters (case insensitive) `A`, `B`, `C`, `D`, `E`, `F`.
 /// - A single negative sign, e.g., `-`, required to be at the start of the string, after the `"0b"` prefix.
 /// - A decimal, e.g., `.` to denote a fractional number in binary form.
-pub(crate) fn is_hexadecimal_str(s: &str) -> bool {
-    if (!s.starts_with("-0x") && !s.starts_with("0x")) || s.is_empty() {
+pub(crate) fn is_hexadecimal_str(s: &str, validate_prefix: bool) -> bool {
+    if s.is_empty() {
+        return false;
+    }
+    if validate_prefix && (!s.starts_with("-0x") && !s.starts_with("0x")) {
         return false;
     }
 
     let s = s.strip_prefix('-').unwrap_or(s);
-    let s = s.strip_prefix("0x").unwrap_or(s);
+    let s = if validate_prefix {
+        s.strip_prefix("0x").unwrap_or(s)
+    } else {
+        s
+    };
+
     let mut seen_decimal = false;
 
     for c in s.chars() {
@@ -163,13 +180,21 @@ pub(crate) fn is_hexadecimal_str(s: &str) -> bool {
 
 /// Octal string must start with `0o` or `-0o` for negative octal strings.
 /// A valid octal string on contains characters "0" - "7".
-pub(crate) fn is_octal_str(s: &str) -> bool {
-    if (!s.starts_with("-0o") && !s.starts_with("0o")) || s.is_empty() {
+pub(crate) fn is_octal_str(s: &str, validate_prefix: bool) -> bool {
+    if s.is_empty() {
+        return false;
+    }
+    if validate_prefix && (!s.starts_with("-0o") && !s.starts_with("0o")) {
         return false;
     }
 
     let s = s.strip_prefix('-').unwrap_or(s);
-    let s = s.strip_prefix("0o").unwrap_or(s);
+    let s = if validate_prefix {
+        s.strip_prefix("0o").unwrap_or(s)
+    } else {
+        s
+    };
+
     let mut seen_decimal = false;
 
     for c in s.chars() {
